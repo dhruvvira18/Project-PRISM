@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calm Focus Learning</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Color System */
+            --bg-warm: #FDFCF8;       /* Warm neutral background */
+            --primary-blue: #7F9FBA;  /* Soft Blue */
+            --primary-green: #8FB59E; /* Muted Green */
+            --text-dark: #2D3748;     /* High contrast text */
+            --text-soft: #718096;     /* Muted text */
+            --focus-bg: #2C3E50;      /* Dark background for focus mode */
+            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        }
+
+        body {
+            background-color: var(--bg-warm);
+            font-family: 'Nunito', sans-serif;
+            color: var(--text-dark);
+            min-height: 100vh;
+            transition: background-color 0.5s ease;
+            overflow-x: hidden;
+        }
+
+        /* --- Layout & Typography --- */
+        .main-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding-top: 5vh;
+            position: relative;
+            z-index: 10;
+        }
+
+        h1, h2, h3 {
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        /* --- Input Section --- */
+        .input-group-lg > .form-control {
+            border: 2px solid #E2E8F0;
+            background-color: white;
+            border-radius: 20px 0 0 20px;
+            padding: 1.5rem;
+            font-size: 1.2rem;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+        }
+
+        .input-group-lg > .form-control:focus {
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 4px rgba(127, 159, 186, 0.2);
+        }
+
+        .btn-ask {
+            background-color: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 0 20px 20px 0;
+            padding-left: 2rem;
+            padding-right: 2rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .btn-ask:hover {
+            background-color: #6a8ba6;
+            transform: translateY(-1px);
+        }
+
+        /* --- Toggle Pills --- */
+        .toggle-container {
+            margin-top: 2rem;
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+        }
+
+        .mode-toggle {
+            background-color: white;
+            border: 2px solid #E2E8F0;
+            border-radius: 50px;
+            padding: 0.5rem 1.5rem;
+            cursor: pointer;
+            color: var(--text-soft);
+            font-weight: 600;
+            transition: all 0.3s ease;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mode-toggle:hover {
+            border-color: var(--primary-green);
+            color: var(--primary-green);
+        }
+
+        .mode-toggle.active {
+            background-color: var(--primary-green);
+            border-color: var(--primary-green);
+            color: white;
+            box-shadow: 0 4px 12px rgba(143, 181, 158, 0.4);
+        }
+
+        /* --- Answer Area (Step Cards) --- */
+        .answer-section {
+            margin-top: 3rem;
+            display: none; /* Hidden initially */
+        }
+
+        .step-card {
+            background: white;
+            border-radius: 24px;
+            padding: 2.1rem;
+            box-shadow: var(--card-shadow);
+            position: relative;
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .simple-word {
+            border-bottom: 2px dotted var(--primary-green);
+            cursor: help;
+            position: relative;
+        }
+
+        .simple-word:hover::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: 130%;
+            left: 0;
+            background: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            font-size: 0.9rem;
+            white-space: nowrap;
+            color: var(--text-dark);
+        }
+
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .step-indicator {
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-size: 0.85rem;
+            color: var(--primary-blue);
+            font-weight: 700;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .progress-dots {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 1.5rem;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #E2E8F0;
+            transition: background 0.3s;
+        }
+
+        .dot.active {
+            background: var(--primary-blue);
+        }
+
+
+        .content-text {
+            font-size: 1.15rem;
+            line-height: 1.55;
+            color: var(--text-dark);
+            margin-bottom: 1.2rem;
+        }
+
+
+        .explain-btn {
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 8px;
+            opacity: 0.8;
+        }
+
+        .explain-btn:hover {
+            opacity: 1;
+        }
+
+
+        /* Visual Mode Icon Placeholder */
+        .visual-icon {
+            display: none; /* Hidden by default */
+            font-size: 3rem;
+            color: var(--primary-green);
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        /* TTS Controls */
+        .tts-controls {
+            display: none; /* Hidden by default */
+            margin-bottom: 1.5rem;
+            align-items: center;
+            gap: 1rem;
+            background: #F7FAFC;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            width: fit-content;
+        }
+
+        .highlight-text {
+            background-color: #FEFCBF; /* Soft yellow highlight */
+            transition: background-color 0.2s;
+        }
+
+        /* Navigation Buttons */
+        .step-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.3rem;
+            padding-top: 1.3rem;
+            border-top: 1px solid #EDF2F7;
+        }
+
+        .btn-nav {
+            background: none;
+            border: 2px solid transparent;
+            color: var(--text-soft);
+            font-weight: 600;
+            padding: 0.5rem 1.5rem;
+            border-radius: 12px;
+            transition: all 0.2s;
+        }
+
+        .btn-nav:hover {
+            background-color: #EDF2F7;
+            color: var(--text-dark);
+        }
+
+        .btn-nav-primary {
+            background-color: var(--primary-blue);
+            color: white;
+            box-shadow: 0 4px 10px rgba(127, 159, 186, 0.3);
+        }
+        
+        .btn-nav-primary:hover {
+            background-color: #6a8ba6;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* --- FOCUS MODE STYLES --- */
+        body.focus-active {
+            background-color: var(--focus-bg);
+        }
+
+        body.focus-active .input-section,
+        body.focus-active .toggle-container {
+            opacity: 0.1; /* Dim but don't remove layout flow */
+            pointer-events: none;
+            filter: blur(2px);
+            transition: all 0.5s ease;
+        }
+
+        body.focus-active .step-card {
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        /* Make the "Exit Focus" button appear only in focus mode */
+        .exit-focus-btn {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            z-index: 100;
+        }
+        
+        body.focus-active .exit-focus-btn {
+            display: block;
+        }
+
+    </style>
+</head>
+<body>
+
+    <button class="exit-focus-btn" onclick="toggleFocusMode()">
+        <i class="fas fa-times me-2"></i> Exit Focus Mode
+    </button>
+
+    <div class="container main-container">
+        
+        <div class="input-section text-center mb-4">
+            <div style="height: 60px;"></div> <h2 class="mb-4" style="color: var(--primary-blue); opacity: 0.8;">What do you want to learn today?</h2>
+            
+            <div class="input-group input-group-lg">
+                <input type="text" class="form-control" id="questionInput" placeholder="Type your question here... (e.g., How does rain form?)">
+                <button class="btn btn-ask" type="button" onclick="generateAnswer()">
+                    Ask & Learn
+                </button>
+            </div>
+        </div>
+
+        <div class="toggle-container">
+            <div class="mode-toggle" id="btnFocus" onclick="toggleFocusMode()">
+                <i class="fas fa-moon"></i> Focus Mode
+            </div>
+            <div class="mode-toggle" id="btnVisual" onclick="toggleVisualMode()">
+                <i class="fas fa-image"></i> Visual Mode
+            </div>
+            <div class="mode-toggle" id="btnTTS" onclick="toggleTTSMode()">
+                <i class="fas fa-volume-up"></i> Read Aloud
+            </div>
+        </div>
+
+        <div class="answer-section" id="answerSection">
+            <div class="progress-dots">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+            
+            <div class="step-card" id="step1">
+
+            
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="step-indicator">Step 1 of 3</span>
+                        <div class="tts-controls">
+                            <i class="fas fa-play-circle fa-2x text-primary" style="cursor:pointer;" onclick="playAudio()"></i>
+                            <small class="text-muted">Playing...</small>
+                        </div>
+                    </div>
+
+                    <div class="visual-icon">
+                        <i class="fas fa-sun"></i>
+                        <i class="fas fa-arrow-right mx-3" style="font-size: 1rem; vertical-align: middle;"></i>
+                        <i class="fas fa-water"></i>
+                    </div>
+
+                    <h3 class="mb-3">
+                        <span class="simple-word" data-tip="Water turning into gas because of heat">
+                            Evaporation
+                        </span>
+                    </h3>
+
+                    <p class="content-text" id="textStep1">
+
+                        Imagine the sun warming up the water in the ocean. <br><br>
+                        When water gets hot, it turns into an invisible gas called 
+                        <strong>water vapor</strong>. 
+                        It floats up into the sky just like steam from a hot cup of tea.
+                    </p>
+
+                        <button class="btn btn-sm btn-outline-secondary explain-btn">
+                        Explain simpler
+                        </button>
+
+                        <div class="step-nav">
+                            <button class="btn btn-nav" style="visibility:hidden;">Previous</button>
+
+                            <button class="btn btn-nav btn-nav-primary" onclick="showStep(2)">Next Step <i class="fas fa-arrow-right ms-2"></i></button>
+                        </div>
+        
+            </div>
+
+            <div class="step-card" id="step2" style="display: none;">
+
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="step-indicator">Step 2 of 3</span>
+                            <div class="tts-controls">
+                                <i class="fas fa-play-circle fa-2x text-primary" style="cursor:pointer;"></i>
+                            </div>
+                        </div>
+
+                        <div class="visual-icon">
+                            <i class="fas fa-cloud fa-2x"></i>
+                        </div>
+
+                        <h3 class="mb-3">
+                            <span class="simple-word" data-tip="Gas turning back into tiny drops of water when cooled">
+                                Condensation
+                            </span>
+                        </h3>
+
+                        <p class="content-text">
+
+                            As the 
+                            <strong>
+                                <span class="simple-word" data-tip="Water in gas form">water vapor</span>
+                            </strong> 
+                            goes higher, the air becomes cooler. <br><br>
+
+                            The cool air changes it back into tiny liquid water drops.  
+                            These drops join together to form 
+                            <strong>
+                                <span class="simple-word" data-tip="Groups of tiny water drops in the sky">clouds</span>
+                            </strong>.
+                        </p>
+
+                        <button class="btn btn-sm btn-outline-secondary explain-btn">
+                        Explain simpler
+                        </button>                       
+
+                        <div class="step-nav">
+                            <button class="btn btn-nav" onclick="showStep(1)">Previous</button>
+                            <button class="btn btn-nav btn-nav-primary" onclick="showStep(3)">Next Step <i class="fas fa-arrow-right ms-2"></i></button>
+                        </div>
+
+                
+            </div>
+
+            <div class="step-card" id="step3" style="display: none;">
+
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="step-indicator">Step 3 of 3</span>
+                            <div class="tts-controls">
+                                <i class="fas fa-play-circle fa-2x text-primary" style="cursor:pointer;"></i>
+                            </div>
+                        </div>
+
+                        <div class="visual-icon">
+                            <i class="fas fa-cloud-showers-heavy"></i>
+                        </div>
+
+                        <h3 class="mb-3">
+                            <span class="simple-word" data-tip="Water falling from clouds to the ground">
+                                Precipitation
+                            </span>
+                        </h3>
+
+                        <p class="content-text">
+                        
+                            When the 
+                            <strong>
+                                <span class="simple-word" data-tip="Groups of tiny water drops in the sky">clouds</span>
+                            </strong> 
+                            become too heavy, they can no longer hold the water. <br><br>
+
+                            The water falls back to Earth as 
+                            <strong>
+                                <span class="simple-word" data-tip="Water falling from the sky">rain</span>
+                            </strong> 
+                            (or snow when it is very cold).
+                        </p>
+
+                        <button class="btn btn-sm btn-outline-secondary explain-btn">
+                        Explain simpler
+                        </button>
+
+
+
+                        <div class="step-nav">
+                            <button class="btn btn-nav" onclick="showStep(2)">Previous</button>
+                            <button class="btn btn-nav disabled" disabled>All Done! <i class="fas fa-check ms-2"></i></button>
+                        </div>
+                </div>
+            </div>
+
+        
+    </div>
+
+    <script>
+        // State management
+        let currentStep = 1;
+        let isFocusMode = false;
+        let isVisualMode = false;
+        let isTTSMode = false;
+
+        const hardcodedAnswers = {
+            "how does rain form": [
+                {
+                    title: "Evaporation",
+                    text: "The sun heats water in oceans, lakes, and rivers. The water turns into invisible vapor and rises into the sky like steam."
+                },
+                {
+                    title: "Condensation",
+                    text: "As the vapor rises, the air cools it down. It changes back into tiny water droplets and forms clouds."
+                },
+                {
+                    title: "Precipitation",
+                    text: "When clouds get heavy with water, the droplets fall to the ground as rain."
+                }
+            ],
+
+            "what is an atom": [
+                {
+                    title: "Tiny Building Blocks",
+                    text: "Everything around you is made of extremely small particles called atoms."
+                },
+                {
+                    title: "Inside an Atom",
+                    text: "Atoms have a center called the nucleus with electrons moving around it."
+                },
+                {
+                    title: "Why Atoms Matter",
+                    text: "Atoms combine to form all materials in the world."
+                }
+            ]
+        };
+
+
+        // Mock "Answer Generator"
+        function generateAnswer() {
+            const input = document.getElementById('questionInput').value.toLowerCase().trim();
+            if(input === "") return;
+
+            if(!hardcodedAnswers[input]){
+                alert("Try asking: How does rain form OR What is an atom");
+                return;
+            }
+
+            document.getElementById('answerSection').style.display = "block";
+            showStep(1);
+
+            document.getElementById('answerSection')
+                .scrollIntoView({ behavior: 'smooth' });
+        }
+
+
+        // Step Navigation Logic
+        function showStep(stepNumber) {
+            const totalSteps = 3;
+
+            for (let i = 1; i <= totalSteps; i++) {
+                document.getElementById('step' + i).style.display = 'none';
+            }
+
+            const activeStep = document.getElementById('step' + stepNumber);
+            activeStep.style.display = 'block';
+
+            document.querySelectorAll('.dot').forEach(dot => dot.classList.remove('active'));
+
+            const allDots = document.querySelectorAll('.progress-dots .dot');
+
+            for (let i = 0; i < stepNumber; i++) {
+                allDots[i].classList.add('active');
+            }
+
+
+            currentStep = stepNumber;
+        }
+
+
+
+        // --- MODE TOGGLES ---
+
+        // 1. Focus Mode
+        function toggleFocusMode() {
+            isFocusMode = !isFocusMode;
+            const body = document.body;
+            const btn = document.getElementById('btnFocus');
+
+            if(isFocusMode) {
+                body.classList.add('focus-active');
+                btn.classList.add('active');
+            } else {
+                body.classList.remove('focus-active');
+                btn.classList.remove('active');
+            }
+        }
+
+        // 2. Visual Mode
+        function toggleVisualMode() {
+            isVisualMode = !isVisualMode;
+            const btn = document.getElementById('btnVisual');
+            const icons = document.querySelectorAll('.visual-icon');
+
+            if(isVisualMode) {
+                btn.classList.add('active');
+                icons.forEach(icon => icon.style.display = 'block');
+            } else {
+                btn.classList.remove('active');
+                icons.forEach(icon => icon.style.display = 'none');
+            }
+        }
+
+        // 3. Text-to-Speech Mode
+        function toggleTTSMode() {
+            isTTSMode = !isTTSMode;
+            const btn = document.getElementById('btnTTS');
+            const controls = document.querySelectorAll('.tts-controls');
+
+            if(isTTSMode) {
+                btn.classList.add('active');
+                controls.forEach(c => c.style.display = 'flex');
+            } else {
+                btn.classList.remove('active');
+                controls.forEach(c => c.style.display = 'none');
+                // Remove visual highlights if turning off
+                document.querySelectorAll('.highlight-text').forEach(el => el.classList.remove('highlight-text'));
+            }
+        }
+
+        // Mock Audio Playback Visuals
+        function playAudio() {
+            if(!isTTSMode) return;
+            
+            // This is a visual simulation of reading
+            const textEl = document.getElementById('textStep1');
+            textEl.classList.add('highlight-text');
+            
+            setTimeout(() => {
+                textEl.classList.remove('highlight-text');
+            }, 2000);
+        }
+
+    </script>
+</body>
+</html>
