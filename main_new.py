@@ -32,8 +32,14 @@ except Exception:
     print("⚠️ WARNING: Collection not found. Run ingest.py first!")
     collection = None
 
+# --- NEW GRADE DATABASE ---
+GRADE_SUBJECT_DB = {
+    "Grade 5": ["Science", "Social Studies"],
+    "Grade 6": ["Science", "Social Studies"],
+    "Grade 7": ["Science", "Social Studies"]
+}
 
-# --- NEW MOCK DATABASE FOR LEVEL TESTS ---
+# --- MOCK DATABASE FOR LEVEL TESTS ---
 SUBJECTS_DB = {
     "Science": [
         {
@@ -116,11 +122,19 @@ SUBJECTS_DB = {
 class LevelAnswers(BaseModel):
     answers: list[int]
 
-# --- NEW ENDPOINTS ---
+
+# --- ENDPOINTS ---
+
+@app.get("/grades")
+async def get_grades():
+    return {"grades": list(GRADE_SUBJECT_DB.keys())}
 
 @app.get("/subjects")
-async def get_subjects():
-    return {"subjects": list(SUBJECTS_DB.keys())}
+async def get_subjects(grade: str = Query(...)):
+    subjects = GRADE_SUBJECT_DB.get(grade, [])
+    if not subjects:
+        return JSONResponse(status_code=404, content={"error": "Grade not found."})
+    return {"subjects": subjects}
 
 @app.get("/level-test")
 async def get_level_test(subject: str = Query(...)):
@@ -146,16 +160,14 @@ async def calculate_level(data: LevelAnswers):
     return {"level": level, "median_score": med}
 
 
-# --- EXISTING ENDPOINTS ---
-
 @app.get("/")
 async def read_index():
-    return FileResponse('Project-PRISM\static\index.html')
+    return FileResponse('Project-PRISM\static\index_new.html')
 
 @app.get("/ask")
 async def ask_assistant(user_query: str = Query(...), student_level: str = Query("Intermediate")):
     if not collection:
-        return JSONResponse(status_code=500, content={"title": "Error", "flashcard_content": "Database not initialized."})
+        return JSONResponse(status_code=500, content={"title": "Error", "knowledge_cards": ["Database not initialized."]})
 
     try:
         results = collection.query(query_texts=[user_query], n_results=2)
@@ -168,25 +180,42 @@ async def ask_assistant(user_query: str = Query(...), student_level: str = Query
         QUERY: {user_query}
         
         RULES: 
-        1. NO Bionic Reading. 
-        2. Use standard bolding for **Full Keywords**.
-        3. Return ONLY valid JSON.
-        4. Create a multiple-choice quiz based on the context.
-        5. Adjust explanation complexity according to the STUDENT_LEVEL.
-           - Beginner -> very simple, highly accessible explanation.
-           - Intermediate -> normal, grade-level explanation.
-           - Advanced -> deeper, more conceptual explanation.
+        1. Break explanations down into small knowledge cards (40-80 words max per card).
+        2. Use simple, engaging language. NO Bionic Reading. Bold **Full Keywords**.
+        3. Provide a simple analogy, a multiple-choice quiz, and key_points ONLY for the final revision card.
+        4. Adjust complexity according to the STUDENT_LEVEL.
+        5. VISUAL BLUEPRINT: If the topic benefits from a diagram, generate a "visual" block.
+           - Canvas size is 450x450. 
+           - Objects can only be "rect", "circle", or "line". 
+           - LABELS MUST BE EXTREMELY SHORT (1-3 words max!). Do not use long sentences.
+           - For rects, ALWAYS use width >= 140 and height >= 50.
+           - CRITICAL SPACING RULE: If stacking boxes vertically, leave at least 60 pixels of empty space between them! (e.g., y=20, y=130, y=240). DO NOT squish them.
+           - Arrows need from [x,y], to [x,y]. 
+           - EVERY object and arrow MUST have a unique "id" (string) for animation.
+           - "animation_steps" is an ordered list of these IDs to show them step-by-step.
+           - If no diagram is needed, return "visual": null.
 
         RETURN ONLY JSON:
         {{
           "title": "Topic Name",
-          "flashcard_content": "Bite-sized explanation matching the student level with **Keywords** bolded.",
-          "key_points": ["Point 1", "Point 2", "Point 3"],
-          "analogy": "A clear metaphor matching the student's level",
-          "breadcrumb": "Grade 6 > Subject > Chapter",
+          "knowledge_cards": ["Chunk 1...", "Chunk 2..."],
+          "visual": {{
+            "type": "flow_diagram",
+            "objects": [
+              {{"id":"box1","shape":"rect","x":155,"y":20,"width":140,"height":50,"label":"Observe"}},
+              {{"id":"box2","shape":"rect","x":155,"y":130,"width":140,"height":50,"label":"Hypothesis"}}
+            ],
+            "arrows": [
+              {{"id":"arrow1","label":"leads to","from":[225,70],"to":[225,125]}}
+            ],
+            "animation_steps": [{{"show":"box1"}}, {{"show":"arrow1"}}, {{"show":"box2"}}]
+          }},
+          "key_points": ["Point 1", "Point 2"],
+          "analogy": "Metaphor here",
+          "breadcrumb": "Grade 6 > Subject",
           "quiz": {{
             "question": "A clear question based on the text.",
-            "options": ["Option A", "Option B", "Option C", "Option D"],
+            "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
             "correct": "Exact string of the correct option",
             "explanation": "Brief explanation of why this answer is correct."
           }}

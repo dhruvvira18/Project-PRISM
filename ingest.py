@@ -20,7 +20,7 @@ def chunk_text(text, chunk_size=1000, overlap=200):
 
 def ingest_data():
     # Use os.path.join for cross-platform compatibility (Windows/Mac/Linux)
-    base_data_path = os.path.join( "data")
+    base_data_path = os.path.join( "Project-PRISM\data")
     
     if not os.path.exists(base_data_path):
         print(f"❌ ERROR: Base folder '{base_data_path}' not found!")
