@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
 
     <style>
         :root {
@@ -182,6 +183,17 @@
             border-radius: 16px;
             padding: 1rem;
         }
+
+        @keyframes float-up {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100vh) scale(0.5);
+            }
+        }
     </style>
 </head>
 <body>
@@ -218,6 +230,9 @@
             <div class="text-center">
                 <div style="height: 60px;"></div>
                 <div class="status-badge" id="levelBadge">Focus Mode | Calibrating...</div>
+                <div style="font-size: 0.9rem; color: var(--text-soft); margin-bottom: 1rem;">
+                    ⏱️ Session: <span id="sessionTimer">0:00</span> | 🧠 Topics: <span id="topicsCount">0</span>
+                </div>
                 <h2 class="mb-4" style="color: var(--primary-blue); opacity: 0.9;">What do you want to learn today?</h2>
                 
                 <div class="input-group input-group-lg">
@@ -250,8 +265,55 @@
         let isAudioPaused = false;
         
         let animationTimers = []; 
+        
+        // ADHD-OPTIMIZATION: Session Tracking for breaks & motivation
+        let sessionStartTime = null;
+        let sessionTopicsLearned = 0;
+        let sessionQuestionsCorrect = 0;
+        let breakReminderShown = false;
+        const FOCUS_DURATION_MS = 25 * 60 * 1000; // 25-minute Pomodoro
+        const BREAK_DURATION_MS = 5 * 60 * 1000;  // 5-minute break 
 
-        const API_URL = "http://127.0.0.1:8000";
+        const API_URL = "";
+
+        // ADHD-OPTIMIZATION: Session time tracker & break reminders
+        function startSessionTimer() {
+            if (!sessionStartTime) sessionStartTime = Date.now();
+            setInterval(() => {
+                const elapsedMs = Date.now() - sessionStartTime;
+                const minutes = Math.floor(elapsedMs / 60000);
+                const seconds = Math.floor((elapsedMs % 60000) / 1000);
+                document.getElementById("sessionTimer").innerText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                // ADHD Break Reminder: After 25 mins, prompt break
+                if (minutes === 25 && !breakReminderShown) {
+                    breakReminderShown = true;
+                    showBreakReminder();
+                }
+            }, 1000);
+        }
+
+        function showBreakReminder() {
+            const hasUserConfirmed = confirm("🎉 Wow! You've been focused for 25 minutes!\n\nYour brain deserves a 5-minute break. Take some water, stretch, then come back stronger! ✨\n\nReady to continue?");
+            if (hasUserConfirmed) {
+                breakReminderShown = false; // Reset for next cycle
+                sessionStartTime = Date.now(); // Restart timer
+            }
+        }
+
+        function incrementTopicCount() {
+            sessionTopicsLearned++;
+            document.getElementById("topicsCount").innerText = sessionTopicsLearned;
+        }
+
+        function incrementQuestionCount() {
+            sessionQuestionsCorrect++;
+        }
+
+        function showSessionSummary() {
+            const mins = Math.floor((Date.now() - sessionStartTime) / 60000);
+            alert(`🎓 AWESOME SESSION!\n\nYou learned ${sessionTopicsLearned} concepts in ${mins} minutes!\n\nYou grew your brain. Literally. 🧠✨\n\nTake a break—you earned it!`);
+        }
 
         // --- INIT & PHASE 1 (Grades & Subjects) ---
         window.onload = async () => {
@@ -270,6 +332,7 @@
                 });
             } catch(e) {
                 console.error("Initialization Error:", e);
+                alert("Cannot connect to backend. Ensure Uvicorn is running.");
                 document.getElementById("gradeButtons").innerHTML = "<p class='text-danger'>Cannot connect to AI Backend. Ensure Uvicorn is running on port 8000.</p>";
             }
         };
@@ -291,12 +354,18 @@
                 });
             } catch(e) {
                 console.error("Subjects Load Error:", e);
+                alert("Error loading subjects.");
             }
         }
 
         function switchPhase(phaseId) {
             document.querySelectorAll('.phase').forEach(p => p.classList.remove('active-phase'));
             document.getElementById(phaseId).classList.add('active-phase');
+            
+            // ADHD-OPTIMIZATION: Start session timer when entering phase 3
+            if (phaseId === "phase3" && !sessionStartTime) {
+                startSessionTimer();
+            }
         }
 
         // --- PHASE 2: LEVEL TEST (1 Card at a Time) ---
@@ -368,14 +437,18 @@
                 switchPhase("phase3");
             } catch(e) {
                 console.error("Calculation Error:", e);
+                alert("Error calculating level.");
                 document.getElementById("levelBadge").innerText = `${currentGrade} | Level: Intermediate`;
                 switchPhase("phase3");
             }
         }
 
         // --- PHASE 3: DYNAMIC FLASHCARDS & RAG ---
-        // More robust cleaner to guarantee asterisks turn into strong tags and don't leak
-        const clean = (text) => text ? text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\*/g, "") : "";
+        // More robust cleaner to guarantee asterisks turn into strong tags and remove stray markers
+        const clean = (text) => text ? text
+            .replace(/\*\*\s*(.*?)\s*\*\*/g, "<strong>$1</strong>")
+            .replace(/\*+/g, "")
+            : "";
 
         document.getElementById("questionInput").addEventListener("keypress", function(event) {
             if (event.key === "Enter") { event.preventDefault(); generateAnswer(); }
@@ -393,6 +466,7 @@
                 const data = await response.json();
                 
                 buildDynamicSteps(data);
+                incrementTopicCount(); // ADHD-OPTIMIZATION: Track learned topics
                 
                 document.getElementById('loader').style.display = "none";
                 document.getElementById('answerSection').style.display = "block";
@@ -407,15 +481,32 @@
         function buildDynamicSteps(data) {
             dynamicStepsData = [];
             currentQuiz = data.quiz;
-            const title = data.title ? data.title.replace(/\*/g, "") : "Concept";
+            const title = data.title ? data.title.replace(/\*+/g, "") : "Concept";
             
-            // 1. Knowledge Card (Part 1)
-            if (data.knowledge_cards && data.knowledge_cards.length > 0) {
+            // 1. Flashcards with up to 3 bullet points each
+            if (Array.isArray(data.flashcards) && data.flashcards.length > 0) {
+                data.flashcards.slice(0, 2).forEach((card, idx) => {
+                    const bullets = Array.isArray(card.bullet_points) ? card.bullet_points.slice(0, 3) : [];
+                    let listHtml = '<ul class="key-points-list">';
+                    bullets.forEach(point => {
+                        listHtml += `<li>${clean(point)}</li>`;
+                    });
+                    listHtml += '</ul>';
+
+                    dynamicStepsData.push({
+                        type: 'knowledge',
+                        title: card.title || `Flashcard ${idx + 1}`,
+                        content: listHtml,
+                        rawText: bullets.join(' '),
+                        icon: 'fa-brain'
+                    });
+                });
+            } else if (data.flashcard_content) {
                 dynamicStepsData.push({
                     type: 'knowledge',
-                    title: data.knowledge_cards.length > 1 ? `${title} (Part 1)` : title,
-                    content: clean(data.knowledge_cards[0]),
-                    rawText: data.knowledge_cards[0],
+                    title: title,
+                    content: clean(data.flashcard_content),
+                    rawText: data.flashcard_content,
                     icon: 'fa-brain'
                 });
             }
@@ -430,18 +521,7 @@
                 });
             }
 
-            // 3. Remaining Knowledge Cards
-            if (data.knowledge_cards && data.knowledge_cards.length > 1) {
-                for (let i = 1; i < data.knowledge_cards.length; i++) {
-                    dynamicStepsData.push({
-                        type: 'knowledge',
-                        title: `${title} (Part ${i+1})`,
-                        content: clean(data.knowledge_cards[i]),
-                        rawText: data.knowledge_cards[i],
-                        icon: 'fa-brain'
-                    });
-                }
-            }
+            // 3. Remaining Knowledge Cards - REMOVED since now single content
 
             // 4. Analogy Card
             if (data.analogy) {
@@ -698,6 +778,10 @@
         }
 
         function startAudio(elementId, index) {
+            if (!window.speechSynthesis) {
+                alert("Text-to-speech is not supported in this browser.");
+                return;
+            }
             window.speechSynthesis.resume();
             window.speechSynthesis.cancel();
             
@@ -741,6 +825,26 @@
         }
 
         // --- MCQ VERIFICATION ---
+        function celebrateCorrectAnswer(btn) {
+            // ADHD DOPAMINE BOOST: Animated celebration emojis
+            const emojis = ['🎉', '✨', '🎊', '🧠', '⭐', '🚀', '💡'];
+            for (let i = 0; i < 5; i++) {
+                const emoji = document.createElement('div');
+                emoji.innerText = emojis[Math.floor(Math.random() * emojis.length)];
+                emoji.style.position = 'fixed';
+                emoji.style.left = Math.random() * 100 + 'vw';
+                emoji.style.top = '-20px';
+                emoji.style.fontSize = '2rem';
+                emoji.style.zIndex = 1000;
+                emoji.style.animation = 'float-up 2s ease-out forwards';
+                document.body.appendChild(emoji);
+                setTimeout(() => emoji.remove(), 2000);
+            }
+            
+            // Play celebratory sound (optional, browser must allow)
+            // For this implementation, we'll just use visual feedback
+        }
+
         // --- MCQ VERIFICATION ---
         function checkAnswer(btn, selectedStr) {
             if (!currentQuiz) return;
@@ -768,7 +872,12 @@
                 btn.style.backgroundColor = 'var(--correct-bg)';
                 msgBox.style.color = '#1e5c3a';
                 msgBox.style.backgroundColor = '#eef8f1';
-                msgBox.innerHTML = `<strong>✨ Brilliant!</strong> <br><br> ${clean(currentQuiz.explanation)}`;
+                // ADHD-OPTIMIZED: Growth mindset + dopamine boost
+                msgBox.innerHTML = `<strong>🎉 YES! AMAZING!</strong> <br><br>You just grew your brain—literally! Neurons firing = learning happening! 🧠 <br><br><em>${clean(currentQuiz.explanation)}</em>`;
+                
+                // CELEBRATION: Dopamine trigger—visual celebration
+                celebrateCorrectAnswer(btn);
+                incrementQuestionCount();
             } else {
                 btn.style.borderColor = '#e9a1a8';
                 btn.style.backgroundColor = 'var(--wrong-bg)';
@@ -785,7 +894,8 @@
                 });
                 msgBox.style.color = '#7a1c24';
                 msgBox.style.backgroundColor = '#fdecec';
-                msgBox.innerHTML = `<strong>🛠️ Almost!</strong> <br><br> ${clean(currentQuiz.explanation)}`;
+                // ADHD-OPTIMIZED: Encouragement + explanation
+                msgBox.innerHTML = `<strong>💡 Great Effort!</strong> <br><br>Your brain is building. Every attempt is progress! Here's the right answer: <br><br><em>${clean(currentQuiz.explanation)}</em> <br><br><small>Tip: Next time, focus on this part.</small>`;
             }
         }
     </script>

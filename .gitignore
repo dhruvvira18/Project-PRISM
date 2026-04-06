@@ -9,3 +9,6 @@ venv/
 # IDEs
 .vscode/
 .idea/
+
+# Ignore the Vector Database
+prism_db/

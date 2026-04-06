@@ -1,15 +1,24 @@
 import os
+import json
 import chromadb
+import logging
 from PyPDF2 import PdfReader
 from chromadb.utils import embedding_functions
 
-# 1. Force the persistent path
-client = chromadb.PersistentClient(path="./db")
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+
+# 1. Initialize ChromaDB
+# This saves the database into a folder named 'prism_db' in your root directory
+client = chromadb.PersistentClient(path="./prism_db")
 ef = embedding_functions.DefaultEmbeddingFunction()
-collection = client.get_or_create_collection(name="grade6_syllabus", embedding_function=ef)
+
+# We use one collection for the entire K-10 library. 
+# We will use metadata to filter by grade/subject during retrieval.
+collection = client.get_or_create_collection(name="prism_curriculum", embedding_function=ef)
 
 def chunk_text(text, chunk_size=1000, overlap=200):
-    """Breaks text into smaller overlapping chunks for sharper RAG retrieval."""
+    """Breaks text into smaller overlapping chunks for better semantic retrieval."""
     chunks = []
     start = 0
     while start < len(text):
@@ -19,58 +28,74 @@ def chunk_text(text, chunk_size=1000, overlap=200):
     return chunks
 
 def ingest_data():
-    # Use os.path.join for cross-platform compatibility (Windows/Mac/Linux)
-    base_data_path = os.path.join( "Project-PRISM\data")
+    # Path to your new knowledge base structure
+    kb_path = "knowledge_base"
     
-    if not os.path.exists(base_data_path):
-        print(f"❌ ERROR: Base folder '{base_data_path}' not found!")
-        print("Make sure your folders are set up like: grade6_assistant/data/science/ and grade6_assistant/data/social_studies/")
+    if not os.path.exists(kb_path):
+        logging.error(f"Folder '{kb_path}' not found! Ensure it is in your root directory.")
         return
 
-    # Iterate through subject folders (e.g., 'science', 'social_studies')
-    for subject_folder in os.listdir(base_data_path):
-        subject_path = os.path.join(base_data_path, subject_folder)
-        
-        # Skip if it's not a directory
-        if not os.path.isdir(subject_path):
-            continue
+    # 1. Iterate through Grade folders (grade6, grade7, etc.)
+    for grade_folder in os.listdir(kb_path):
+        grade_path = os.path.join(kb_path, grade_folder)
+        if not os.path.isdir(grade_path): continue
 
-        print(f"\n📂 Processing subject: {subject_folder.capitalize()}")
-        
-        for filename in os.listdir(subject_path):
-            # Only process PDF files
-            if not filename.lower().endswith(".pdf"):
+        # 2. Iterate through Subject folders (science, social_science)
+        for subject_folder in os.listdir(grade_path):
+            subject_path = os.path.join(grade_path, subject_folder)
+            if not os.path.isdir(subject_path): continue
+
+            mapping_file = os.path.join(subject_path, "mapping.json")
+            if not os.path.exists(mapping_path := mapping_file):
+                logging.warning(f"No mapping.json found in {subject_path}. Skipping.")
                 continue
 
-            print(f"  📄 Reading: {filename}")
-            file_path = os.path.join(subject_path, filename)
-            
-            try:
-                reader = PdfReader(file_path)
-                for i, page in enumerate(reader.pages):
-                    text = page.extract_text()
-                    if text:
-                        # Chunk the text for better precision
+            # Load the mapping to get human-readable chapter names
+            with open(mapping_path, 'r') as f:
+                mapping = json.load(f)
+
+            logging.info(f"--- Processing {grade_folder.upper()} | {subject_folder.upper()} ---")
+
+            # 3. Process each chapter defined in mapping.json
+            for ch_num, ch_data in mapping.items():
+                ch_name = ch_data['name']
+                filename = ch_data['file']
+                file_path = os.path.join(subject_path, filename)
+
+                if not os.path.exists(file_path):
+                    logging.error(f"File {filename} (Ch {ch_num}) missing in {subject_path}")
+                    continue
+
+                logging.info(f"Ingesting Chapter {ch_num}: {ch_name}")
+
+                try:
+                    reader = PdfReader(file_path)
+                    for page_num, page in enumerate(reader.pages):
+                        text = page.extract_text()
+                        if not text: continue
+
                         chunks = chunk_text(text)
                         
-                        for chunk_idx, chunk in enumerate(chunks):
-                            # Create a unique, descriptive ID
-                            doc_id = f"{subject_folder}_{filename}_p{i}_c{chunk_idx}"
+                        for c_idx, chunk in enumerate(chunks):
+                            # Create a unique ID: grade6_science_ch2_p1_c0
+                            unique_id = f"{grade_folder}_{subject_folder}_ch{ch_num}_p{page_num}_c{c_idx}"
                             
-                            # Use UPSERT to prevent crashing if you run the script multiple times
+                            # Upsert adds or updates existing IDs
                             collection.upsert(
                                 documents=[chunk],
-                                ids=[doc_id],
+                                ids=[unique_id],
                                 metadatas=[{
-                                    "source": filename, 
-                                    "subject": subject_folder.capitalize(), 
-                                    "page": i
+                                    "grade": grade_folder,
+                                    "subject": subject_folder,
+                                    "chapter_number": ch_num,
+                                    "chapter_name": ch_name,
+                                    "page": page_num
                                 }]
                             )
-            except Exception as e:
-                print(f"  ❌ Error processing {filename}: {e}")
+                except Exception as e:
+                    logging.error(f"Failed to process {filename}: {e}")
 
-    print(f"\n✅ Success! Total chunks in DB: {collection.count()}")
+    logging.info(f"Ingestion Complete! Total vectors in DB: {collection.count()}")
 
 if __name__ == "__main__":
     ingest_data()

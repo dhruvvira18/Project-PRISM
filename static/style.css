@@ -1,0 +1,122 @@
+:root {
+    --bg-warm: #FDFCF8;
+    --primary-blue: #7F9FBA;
+    --primary-green: #8FB59E;
+    --text-dark: #2D3748;
+    --text-soft: #718096;
+    --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+}
+
+body {
+    background-color: var(--bg-warm);
+    font-family: 'Nunito', sans-serif;
+    color: var(--text-dark);
+    min-height: 100vh;
+}
+
+.main-container {
+    max-width: 850px;
+    margin: 0 auto;
+    padding-top: 5vh;
+    padding-bottom: 50px;
+}
+
+.site-logo {
+    position: fixed;
+    top: 20px;
+    left: 28px;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #424242;
+    z-index: 200;
+}
+
+.step-card {
+    background: white;
+    border-radius: 24px;
+    padding: 2.5rem;
+    box-shadow: var(--card-shadow);
+    animation: slideUp 0.5s ease;
+    margin-top: 2rem;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.step-indicator {
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.85rem;
+    color: var(--primary-blue);
+    font-weight: 700;
+}
+
+.progress-dots {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+}
+
+.dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #E2E8F0;
+    transition: 0.3s;
+}
+
+.dot.active { background: var(--primary-blue); }
+
+.content-text {
+    font-size: 1.2rem;
+    line-height: 1.7;
+    margin-top: 1.5rem;
+}
+
+.visual-icon {
+    text-align: center;
+    font-size: 3.5rem;
+    color: var(--primary-green);
+    margin: 1rem 0;
+}
+
+.speaker-icon {
+    font-size: 1.4rem;
+    color: var(--primary-blue);
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.speaker-icon:hover { transform: scale(1.2); }
+
+.btn-ask {
+    background-color: var(--primary-blue);
+    color: white;
+    border-radius: 0 20px 20px 0;
+    padding: 0 2rem;
+}
+
+.step-nav {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #eee;
+}
+
+.btn-nav-primary {
+    background-color: var(--primary-blue);
+    color: white;
+    border-radius: 12px;
+}
+
+.mcq-btn {
+    border-radius: 15px;
+    border: 2px solid #E2E8F0;
+    transition: all 0.2s;
+}
+
+.mcq-btn:hover { border-color: var(--primary-blue); background-color: #f8fbff; }
