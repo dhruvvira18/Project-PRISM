@@ -29,7 +29,7 @@ def chunk_text(text, chunk_size=1000, overlap=200):
 
 def ingest_data():
     # Path to your new knowledge base structure
-    kb_path = "knowledge_base"
+    kb_path = "codebase\knowledge_base"
     
     if not os.path.exists(kb_path):
         logging.error(f"Folder '{kb_path}' not found! Ensure it is in your root directory.")

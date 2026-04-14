@@ -1,6 +1,7 @@
 import os
 import statistics
 import chromadb
+import json
 import logging
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,8 +9,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
 
-# Import our separated AI logic
-from generator import get_prism_content_from_db
+# Import our separated AI logic (Updated path: generator is in the root directory)
+from codebase.generator import get_prism_content_from_db
 
 logging.basicConfig(level=logging.INFO)
 
@@ -184,10 +185,19 @@ async def get_session_stats():
         "next_milestone": "Learn your first topic to unlock 'Knowledge Seeker' badge! 🎓"
     }
 
-# Ensure the frontend static files are served correctly
-if os.path.exists("static"):
-    app.mount("/static", StaticFiles(directory="static"), name="static")
+# --- STATIC FILES AND TEMPLATE ROUTING ---
+
+# 1. Get the absolute path to the directory containing main.py
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# 2. Define exactly where the static folder is (in the root directory)
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
+# 3. Mount the static directory
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 @app.get("/")
 async def read_index():
-    return FileResponse('templates/index.html')
+    # 4. Point to the templates folder inside codebase
+    template_path = os.path.join("codebase", "templates", "index.html")
+    return FileResponse(template_path)

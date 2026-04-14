@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 client_ai = genai.Client(api_key=API_KEY)
+print("API KEY BEING USED:", os.getenv("GEMINI_API_KEY"))
 
 def get_prism_content_from_db(user_query: str, student_level: str, collection):
     """

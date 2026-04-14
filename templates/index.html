@@ -1,567 +1,855 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PRISM | AI Learning Tool</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="/static/style.css" rel="stylesheet">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link href="..\..\static\style.css" rel="stylesheet" />
 
     <style>
-        :root {
-            /* Color System */
-            --bg-warm: #FDFCF8;       
-            --primary-blue: #7F9FBA;  
-            --primary-green: #8FB59E; 
-            --text-dark: #2D3748;     
-            --text-soft: #718096;     
-            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
-            --correct-bg: #D4EDDA;    
-            --wrong-bg: #F8D7DA;      
-        }
+      :root {
+        /* Color System */
+        --bg-warm: #fdfcf8;
+        --primary-blue: #7f9fba;
+        --primary-green: #8fb59e;
+        --text-dark: #2d3748;
+        --text-soft: #718096;
+        --card-shadow:
+          0 10px 25px -5px rgba(0, 0, 0, 0.05),
+          0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        --correct-bg: #d4edda;
+        --wrong-bg: #f8d7da;
+      }
 
-        body {
-            background-color: var(--bg-warm);
-            font-family: 'Nunito', sans-serif;
-            color: var(--text-dark);
-            min-height: 100vh;
-            transition: background-color 0.5s ease;
-            overflow-x: hidden;
-        }
+      body {
+        background-color: var(--bg-warm);
+        font-family: "Nunito", sans-serif;
+        color: var(--text-dark);
+        min-height: 100vh;
+        transition: background-color 0.5s ease;
+        overflow-x: hidden;
+      }
 
-        /* --- Layout & Typography --- */
-        .main-container {
-            max-width: 950px;
-            margin: 0 auto;
-            padding-top: 5vh;
-            padding-bottom: 120px;
-            position: relative;
-            z-index: 10;
-        }
+      /* --- Layout & Typography --- */
+      .main-container {
+        max-width: 950px;
+        margin: 0 auto;
+        padding-top: 5vh;
+        padding-bottom: 120px;
+        position: relative;
+        z-index: 10;
+      }
 
-        h1, h2 { font-weight: 700; color: var(--text-dark); }
-        h3 { font-weight: 700; color: var(--text-dark); font-size: 1.6rem; }
+      h1,
+      h2 {
+        font-weight: 700;
+        color: var(--text-dark);
+      }
+      h3 {
+        font-weight: 700;
+        color: var(--text-dark);
+        font-size: 1.6rem;
+      }
 
-        /* --- Phase Control --- */
-        .phase { display: none; }
-        .active-phase { display: block; animation: fadeIn 0.5s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      /* --- Phase Control --- */
+      .phase {
+        display: none;
+      }
+      .active-phase {
+        display: block;
+        animation: fadeIn 0.5s ease;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
 
-        /* --- Subject & Level Test UI --- */
-        .subject-grid {
-            display: flex; gap: 15px; justify-content: center; margin-top: 30px; flex-wrap: wrap;
-        }
-        .btn-subject {
-            background: white; border: 2px solid var(--primary-blue); color: var(--primary-blue);
-            padding: 1rem 2.5rem; border-radius: 20px; font-size: 1.2rem; font-weight: 700;
-            transition: all 0.2s ease; box-shadow: var(--card-shadow);
-        }
-        .btn-subject:hover {
-            background: var(--primary-blue); color: white; transform: translateY(-3px);
-        }
+      /* --- Subject & Level Test UI --- */
+      .subject-grid {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin-top: 30px;
+        flex-wrap: wrap;
+      }
+      .btn-subject {
+        background: white;
+        border: 2px solid var(--primary-blue);
+        color: var(--primary-blue);
+        padding: 1rem 2.5rem;
+        border-radius: 20px;
+        font-size: 1.2rem;
+        font-weight: 700;
+        transition: all 0.2s ease;
+        box-shadow: var(--card-shadow);
+      }
+      .btn-subject:hover {
+        background: var(--primary-blue);
+        color: white;
+        transform: translateY(-3px);
+      }
 
-        .level-q-container {
-            background: white; padding: 20px; border-radius: 20px; box-shadow: var(--card-shadow);
-            margin-bottom: 20px; text-align: left;
-        }
-        .level-option {
-            display: block; width: 100%; text-align: left; margin: 10px 0; padding: 12px 15px;
-            background: var(--bg-warm); border: 2px solid #E2E8F0; border-radius: 12px;
-            transition: all 0.2s; color: var(--text-dark); font-weight: 600;
-        }
-        .level-option:hover { border-color: var(--primary-blue); background: #f0f4f8; }
-        .level-option.selected { border-color: var(--primary-blue); background: rgba(127, 159, 186, 0.15); }
+      .level-q-container {
+        background: white;
+        padding: 20px;
+        border-radius: 20px;
+        box-shadow: var(--card-shadow);
+        margin-bottom: 20px;
+        text-align: left;
+      }
+      .level-option {
+        display: block;
+        width: 100%;
+        text-align: left;
+        margin: 10px 0;
+        padding: 12px 15px;
+        background: var(--bg-warm);
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        transition: all 0.2s;
+        color: var(--text-dark);
+        font-weight: 600;
+      }
+      .level-option:hover {
+        border-color: var(--primary-blue);
+        background: #f0f4f8;
+      }
+      .level-option.selected {
+        border-color: var(--primary-blue);
+        background: rgba(127, 159, 186, 0.15);
+      }
 
-        .status-badge {
-            background: var(--primary-green); color: white; padding: 6px 16px;
-            border-radius: 20px; font-size: 0.9rem; font-weight: 600; display: inline-block;
-            margin-bottom: 20px; box-shadow: 0 4px 10px rgba(143, 181, 158, 0.3);
-        }
+      .status-badge {
+        background: var(--primary-green);
+        color: white;
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        display: inline-block;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 10px rgba(143, 181, 158, 0.3);
+      }
 
-        /* --- Input Section --- */
-        .input-group-lg > .form-control {
-            border: 2px solid #E2E8F0; background-color: white; border-radius: 20px 0 0 20px;
-            padding: 1.5rem; font-size: 1.2rem; box-shadow: var(--card-shadow); transition: all 0.3s ease;
-        }
-        .input-group-lg > .form-control:focus {
-            border-color: var(--primary-blue); box-shadow: 0 0 0 4px rgba(127, 159, 186, 0.2); outline: none;
-        }
-        .btn-ask {
-            background-color: var(--primary-blue); color: white; border: none;
-            border-radius: 0 20px 20px 0; padding-left: 2rem; padding-right: 2rem;
-            font-weight: 600; transition: all 0.2s ease;
-        }
-        .btn-ask:hover { background-color: #6a8ba6; transform: translateY(-1px); color: white;}
+      /* --- Input Section --- */
+      .input-group-lg > .form-control {
+        border: 2px solid #e2e8f0;
+        background-color: white;
+        border-radius: 20px 0 0 20px;
+        padding: 1.5rem;
+        font-size: 1.2rem;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s ease;
+      }
+      .input-group-lg > .form-control:focus {
+        border-color: var(--primary-blue);
+        box-shadow: 0 0 0 4px rgba(127, 159, 186, 0.2);
+        outline: none;
+      }
+      .btn-ask {
+        background-color: var(--primary-blue);
+        color: white;
+        border: none;
+        border-radius: 0 20px 20px 0;
+        padding-left: 2rem;
+        padding-right: 2rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+      }
+      .btn-ask:hover {
+        background-color: #6a8ba6;
+        transform: translateY(-1px);
+        color: white;
+      }
 
-        /* --- Answer Area (Step Cards) --- */
-        .answer-section { margin-top: 3rem; display: none; }
-        .step-card {
-            background: white; border-radius: 24px; padding: 2.1rem; box-shadow: var(--card-shadow);
-            position: relative; transform: scale(0.98); opacity: 0; transition: all 0.4s ease;
-            border: 2px solid transparent; display: none;
+      /* --- Answer Area (Step Cards) --- */
+      .answer-section {
+        margin-top: 3rem;
+        display: none;
+      }
+      .step-card {
+        background: white;
+        border-radius: 24px;
+        padding: 2.1rem;
+        box-shadow: var(--card-shadow);
+        position: relative;
+        transform: scale(0.98);
+        opacity: 0;
+        transition: all 0.4s ease;
+        border: 2px solid transparent;
+        display: none;
+      }
+      .step-card.active-step {
+        transform: scale(1);
+        opacity: 1;
+        display: block;
+      }
+
+      .step-indicator {
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        font-size: 0.95rem;
+        color: var(--primary-blue);
+        font-weight: 700;
+        margin-bottom: 1rem;
+        display: block;
+      }
+
+      .progress-dots {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 1.5rem;
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #e2e8f0;
+        transition: background 0.3s;
+      }
+      .dot.active {
+        background: var(--primary-blue);
+      }
+
+      .content-text {
+        font-size: 1.15rem;
+        line-height: 1.55;
+        color: var(--text-dark);
+        margin-bottom: 1.2rem;
+      }
+      .key-points-list {
+        background: rgba(143, 181, 158, 0.1);
+        padding: 15px 15px 15px 35px;
+        border-radius: 15px;
+        margin-top: 15px;
+      }
+      .key-points-list li {
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #2a3b31;
+      }
+
+      .visual-icon {
+        display: block;
+        font-size: 3rem;
+        color: var(--primary-green);
+        margin-bottom: 1.5rem;
+        text-align: center;
+      }
+
+      .speaker-icon {
+        font-size: 1.25rem;
+        color: var(--primary-blue);
+        cursor: pointer;
+        transition: transform 0.2s ease;
+        opacity: 0.7;
+      }
+      .speaker-icon:hover {
+        opacity: 1;
+        transform: scale(1.1);
+      }
+
+      /* Navigation Buttons */
+      .step-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1.3rem;
+        padding-top: 1.3rem;
+        border-top: 1px solid #edf2f7;
+      }
+      .btn-nav {
+        background: none;
+        border: 2px solid transparent;
+        color: var(--text-soft);
+        font-weight: 600;
+        padding: 0.5rem 1.5rem;
+        border-radius: 12px;
+        transition: all 0.2s;
+      }
+      .btn-nav:hover {
+        background-color: #edf2f7;
+        color: var(--text-dark);
+      }
+      .btn-nav-primary {
+        background-color: var(--primary-blue);
+        color: white;
+        box-shadow: 0 4px 10px rgba(127, 159, 186, 0.3);
+      }
+      .btn-nav-primary:hover {
+        background-color: #6a8ba6;
+        color: white;
+        transform: translateY(-2px);
+      }
+
+      #mcqQuestion {
+        font-size: 1.4rem;
+        line-height: 1.4;
+      }
+      .mcq-btn {
+        font-size: 1.1rem;
+        padding: 1rem 1.25rem;
+        transition: all 0.2s ease;
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        background: white;
+        text-align: left;
+      }
+      .mcq-btn:hover:not(:disabled) {
+        background-color: #edf2f7;
+        border-color: var(--primary-blue);
+      }
+
+      /* Logo CSS*/
+      .site-logo {
+        position: fixed;
+        top: 20px;
+        left: 28px;
+        font-size: 2rem;
+        font-weight: 700;
+        letter-spacing: 2px;
+        color: #424242;
+        z-index: 200;
+        user-select: none;
+      }
+
+      #loader {
+        text-align: center;
+        color: var(--text-soft);
+        font-size: 1.2rem;
+        font-weight: 600;
+        display: none;
+        margin-top: 20px;
+      }
+
+      /* TTS Highlighting System */
+      .tts-word {
+        transition: background-color 0.1s ease;
+        border-radius: 4px;
+        padding: 0 2px;
+      }
+      .tts-active {
+        background-color: #fefcbf;
+        color: var(--text-dark);
+        font-weight: 700;
+      }
+
+      /* Audio Controls */
+      .audio-controls {
+        display: inline-flex;
+        align-items: center;
+        background: #edf2f7;
+        padding: 8px 15px;
+        border-radius: 20px;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+
+      /* --- Diagram & SVG Animations --- */
+      .diagram-element {
+        opacity: 0;
+        transition: opacity 0.5s ease-in-out;
+      }
+
+      .arrow-motion-x {
+        animation: arrowMoveX 1.5s infinite alternate ease-in-out;
+      }
+      .arrow-motion-y {
+        animation: arrowMoveY 1.5s infinite alternate ease-in-out;
+      }
+
+      @keyframes arrowMoveX {
+        from {
+          transform: translateX(0px);
         }
-        .step-card.active-step { transform: scale(1); opacity: 1; display: block; }
-
-        .step-indicator {
-            text-transform: uppercase; letter-spacing: 1.5px; font-size: 0.95rem;
-            color: var(--primary-blue); font-weight: 700; margin-bottom: 1rem; display: block;
+        to {
+          transform: translateX(5px);
         }
-
-        .progress-dots { display: flex; gap: 8px; margin-bottom: 1.5rem; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; background: #E2E8F0; transition: background 0.3s; }
-        .dot.active { background: var(--primary-blue); }
-
-        .content-text { font-size: 1.15rem; line-height: 1.55; color: var(--text-dark); margin-bottom: 1.2rem; }
-        .key-points-list { background: rgba(143, 181, 158, 0.1); padding: 15px 15px 15px 35px; border-radius: 15px; margin-top: 15px; }
-        .key-points-list li { margin-bottom: 8px; font-weight: 600; color: #2a3b31; }
-
-        .visual-icon { display: block; font-size: 3rem; color: var(--primary-green); margin-bottom: 1.5rem; text-align: center; }
-        
-        .speaker-icon { font-size: 1.25rem; color: var(--primary-blue); cursor: pointer; transition: transform 0.2s ease; opacity: 0.7; }
-        .speaker-icon:hover { opacity: 1; transform: scale(1.1); }
-        
-        /* Navigation Buttons */
-        .step-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 1.3rem; padding-top: 1.3rem; border-top: 1px solid #EDF2F7; }
-        .btn-nav { background: none; border: 2px solid transparent; color: var(--text-soft); font-weight: 600; padding: 0.5rem 1.5rem; border-radius: 12px; transition: all 0.2s; }
-        .btn-nav:hover { background-color: #EDF2F7; color: var(--text-dark); }
-        .btn-nav-primary { background-color: var(--primary-blue); color: white; box-shadow: 0 4px 10px rgba(127, 159, 186, 0.3); }
-        .btn-nav-primary:hover { background-color: #6a8ba6; color: white; transform: translateY(-2px); }
-
-        #mcqQuestion { font-size: 1.4rem; line-height: 1.4; }
-        .mcq-btn { font-size: 1.1rem; padding: 1rem 1.25rem; transition: all 0.2s ease; border-radius: 12px; border: 2px solid #E2E8F0; background: white; text-align: left;}
-        .mcq-btn:hover:not(:disabled) { background-color: #EDF2F7; border-color: var(--primary-blue); }
-
-        /* Logo CSS*/
-        .site-logo { position: fixed; top: 20px; left: 28px; font-size: 2rem; font-weight: 700; letter-spacing: 2px; color: #424242; z-index: 200; user-select: none; }
-        
-        #loader { text-align: center; color: var(--text-soft); font-size: 1.2rem; font-weight: 600; display: none; margin-top: 20px; }
-
-        /* TTS Highlighting System */
-        .tts-word {
-            transition: background-color 0.1s ease;
-            border-radius: 4px;
-            padding: 0 2px;
+      }
+      @keyframes arrowMoveY {
+        from {
+          transform: translateY(0px);
         }
-        .tts-active {
-            background-color: #FEFCBF;
-            color: var(--text-dark);
-            font-weight: 700;
+        to {
+          transform: translateY(5px);
         }
+      }
 
-        /* Audio Controls */
-        .audio-controls {
-            display: inline-flex;
-            align-items: center;
-            background: #EDF2F7;
-            padding: 8px 15px;
-            border-radius: 20px;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
-        }
+      .svg-container {
+        border: 2px dashed #e2e8f0;
+        border-radius: 16px;
+        padding: 1rem;
+      }
 
-        /* --- Diagram & SVG Animations --- */
-        .diagram-element {
-            opacity: 0;
-            transition: opacity 0.5s ease-in-out;
+      @keyframes float-up {
+        0% {
+          opacity: 1;
+          transform: translateY(0) scale(1);
         }
-        
-        .arrow-motion-x { animation: arrowMoveX 1.5s infinite alternate ease-in-out; }
-        .arrow-motion-y { animation: arrowMoveY 1.5s infinite alternate ease-in-out; }
-
-        @keyframes arrowMoveX {
-            from { transform: translateX(0px); }
-            to { transform: translateX(5px); }
+        100% {
+          opacity: 0;
+          transform: translateY(-100vh) scale(0.5);
         }
-        @keyframes arrowMoveY {
-            from { transform: translateY(0px); }
-            to { transform: translateY(5px); }
-        }
-
-        .svg-container {
-            border: 2px dashed #E2E8F0;
-            border-radius: 16px;
-            padding: 1rem;
-        }
-
-        @keyframes float-up {
-            0% {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-            100% {
-                opacity: 0;
-                transform: translateY(-100vh) scale(0.5);
-            }
-        }
+      }
     </style>
-</head>
-<body>
-
+  </head>
+  <body>
     <div class="site-logo">PRISM</div>
 
     <div class="container main-container">
-        
-        <div id="phase1a" class="phase active-phase text-center">
-            <div style="height: 80px;"></div> 
-            <h2 style="color: var(--primary-blue);">Welcome to PRISM</h2>
-            <p class="text-muted" style="font-size: 1.2rem;">Select your grade to tune your frequency.</p>
-            <div id="gradeButtons" class="subject-grid">
-                <p class="text-muted">Loading grades...</p>
-            </div>
+      <div id="phase1a" class="phase active-phase text-center">
+        <div style="height: 80px"></div>
+        <h2 style="color: var(--primary-blue)">Welcome to PRISM</h2>
+        <p class="text-muted" style="font-size: 1.2rem">
+          Select your grade to tune your frequency.
+        </p>
+        <div id="gradeButtons" class="subject-grid">
+          <p class="text-muted">Loading grades...</p>
+        </div>
+      </div>
+
+      <div id="phase1b" class="phase text-center">
+        <div style="height: 80px"></div>
+        <h2 style="color: var(--primary-blue)">Pick a Subject</h2>
+        <div id="subjectButtons" class="subject-grid"></div>
+      </div>
+
+      <div id="phase2" class="phase text-center">
+        <div style="height: 60px"></div>
+        <h2 class="mb-3" style="color: var(--primary-blue)">
+          🧠 Calibration Test
+        </h2>
+        <p class="text-muted mb-2">
+          Pick the answers that make the most sense to you.
+        </p>
+        <p class="text-primary fw-bold" id="testProgress">Question 1 / 4</p>
+
+        <div id="levelTestArea" class="text-start mt-4"></div>
+      </div>
+
+      <div id="phase3" class="phase">
+        <div class="text-center">
+          <div style="height: 60px"></div>
+          <div class="status-badge" id="levelBadge">
+            Focus Mode | Calibrating...
+          </div>
+          <div
+            style="
+              font-size: 0.9rem;
+              color: var(--text-soft);
+              margin-bottom: 1rem;
+            "
+          >
+            ⏱️ Session: <span id="sessionTimer">0:00</span> | 🧠 Topics:
+            <span id="topicsCount">0</span>
+          </div>
+          <h2 class="mb-4" style="color: var(--primary-blue); opacity: 0.9">
+            What do you want to learn today?
+          </h2>
+
+          <div class="input-group input-group-lg">
+            <input
+              type="text"
+              class="form-control"
+              id="questionInput"
+              placeholder="Type your topic here... (e.g., What is friction?)"
+            />
+            <button
+              class="btn btn-ask"
+              type="button"
+              onclick="generateAnswer()"
+            >
+              Ask & Learn
+            </button>
+          </div>
+          <div id="loader">
+            <i class="fas fa-circle-notch fa-spin me-2"></i> Syncing with
+            PRISM...
+          </div>
         </div>
 
-        <div id="phase1b" class="phase text-center">
-            <div style="height: 80px;"></div> 
-            <h2 style="color: var(--primary-blue);">Pick a Subject</h2>
-            <div id="subjectButtons" class="subject-grid"></div>
-        </div>
+        <div class="answer-section" id="answerSection">
+          <div class="progress-dots" id="progressDots"></div>
 
-        <div id="phase2" class="phase text-center">
-            <div style="height: 60px;"></div>
-            <h2 class="mb-3" style="color: var(--primary-blue);">🧠 Calibration Test</h2>
-            <p class="text-muted mb-2">Pick the answers that make the most sense to you.</p>
-            <p class="text-primary fw-bold" id="testProgress">Question 1 / 4</p>
-            
-            <div id="levelTestArea" class="text-start mt-4"></div>
+          <div
+            class="step-card"
+            id="dynamicCardContainer"
+            style="display: block"
+          ></div>
         </div>
-
-        <div id="phase3" class="phase">
-            <div class="text-center">
-                <div style="height: 60px;"></div>
-                <div class="status-badge" id="levelBadge">Focus Mode | Calibrating...</div>
-                <div style="font-size: 0.9rem; color: var(--text-soft); margin-bottom: 1rem;">
-                    ⏱️ Session: <span id="sessionTimer">0:00</span> | 🧠 Topics: <span id="topicsCount">0</span>
-                </div>
-                <h2 class="mb-4" style="color: var(--primary-blue); opacity: 0.9;">What do you want to learn today?</h2>
-                
-                <div class="input-group input-group-lg">
-                    <input type="text" class="form-control" id="questionInput" placeholder="Type your topic here... (e.g., What is friction?)">
-                    <button class="btn btn-ask" type="button" onclick="generateAnswer()">Ask & Learn</button>
-                </div>
-                <div id="loader"><i class="fas fa-circle-notch fa-spin me-2"></i> Syncing with PRISM...</div>
-            </div>
-
-            <div class="answer-section" id="answerSection">
-                <div class="progress-dots" id="progressDots"></div>
-                
-                <div class="step-card" id="dynamicCardContainer" style="display:block;"></div>
-            </div>
-        </div>
+      </div>
     </div>
 
     <script>
-        // --- GLOBAL STATE ---
-        let currentGrade = "";
-        let currentLevel = "Intermediate"; 
-        let levelTestSelections = {};
-        let currentQuiz = null;
-        let levelTestQuestions = [];
-        let currentTestIndex = 0;
+      // --- GLOBAL STATE ---
+      let currentGrade = "";
+      let currentLevel = "Intermediate";
+      let levelTestSelections = {};
+      let currentQuiz = null;
+      let levelTestQuestions = [];
+      let currentTestIndex = 0;
 
-        let dynamicStepsData = [];
-        let currentStepIndex = 0;
-        let currentAudioUtterance = null;
-        let isAudioPaused = false;
-        
-        let animationTimers = []; 
-        
-        // ADHD-OPTIMIZATION: Session Tracking for breaks & motivation
-        let sessionStartTime = null;
-        let sessionTopicsLearned = 0;
-        let sessionQuestionsCorrect = 0;
-        let breakReminderShown = false;
-        const FOCUS_DURATION_MS = 25 * 60 * 1000; // 25-minute Pomodoro
-        const BREAK_DURATION_MS = 5 * 60 * 1000;  // 5-minute break 
+      let dynamicStepsData = [];
+      let currentStepIndex = 0;
+      let currentAudioUtterance = null;
+      let isAudioPaused = false;
 
-        const API_URL = "";
+      let animationTimers = [];
 
-        // ADHD-OPTIMIZATION: Session time tracker & break reminders
-        function startSessionTimer() {
-            if (!sessionStartTime) sessionStartTime = Date.now();
-            setInterval(() => {
-                const elapsedMs = Date.now() - sessionStartTime;
-                const minutes = Math.floor(elapsedMs / 60000);
-                const seconds = Math.floor((elapsedMs % 60000) / 1000);
-                document.getElementById("sessionTimer").innerText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                
-                // ADHD Break Reminder: After 25 mins, prompt break
-                if (minutes === 25 && !breakReminderShown) {
-                    breakReminderShown = true;
-                    showBreakReminder();
-                }
-            }, 1000);
+      // ADHD-OPTIMIZATION: Session Tracking for breaks & motivation
+      let sessionStartTime = null;
+      let sessionTopicsLearned = 0;
+      let sessionQuestionsCorrect = 0;
+      let breakReminderShown = false;
+      const FOCUS_DURATION_MS = 25 * 60 * 1000; // 25-minute Pomodoro
+      const BREAK_DURATION_MS = 5 * 60 * 1000; // 5-minute break
+
+      const API_URL = "";
+
+      // ADHD-OPTIMIZATION: Session time tracker & break reminders
+      function startSessionTimer() {
+        if (!sessionStartTime) sessionStartTime = Date.now();
+        setInterval(() => {
+          const elapsedMs = Date.now() - sessionStartTime;
+          const minutes = Math.floor(elapsedMs / 60000);
+          const seconds = Math.floor((elapsedMs % 60000) / 1000);
+          document.getElementById("sessionTimer").innerText =
+            `${minutes}:${seconds.toString().padStart(2, "0")}`;
+
+          // ADHD Break Reminder: After 25 mins, prompt break
+          if (minutes === 25 && !breakReminderShown) {
+            breakReminderShown = true;
+            showBreakReminder();
+          }
+        }, 1000);
+      }
+
+      function showBreakReminder() {
+        const hasUserConfirmed = confirm(
+          "🎉 Wow! You've been focused for 25 minutes!\n\nYour brain deserves a 5-minute break. Take some water, stretch, then come back stronger! ✨\n\nReady to continue?",
+        );
+        if (hasUserConfirmed) {
+          breakReminderShown = false; // Reset for next cycle
+          sessionStartTime = Date.now(); // Restart timer
+        }
+      }
+
+      function incrementTopicCount() {
+        sessionTopicsLearned++;
+        document.getElementById("topicsCount").innerText = sessionTopicsLearned;
+      }
+
+      function incrementQuestionCount() {
+        sessionQuestionsCorrect++;
+      }
+
+      function showSessionSummary() {
+        const mins = Math.floor((Date.now() - sessionStartTime) / 60000);
+        alert(
+          `🎓 AWESOME SESSION!\n\nYou learned ${sessionTopicsLearned} concepts in ${mins} minutes!\n\nYou grew your brain. Literally. 🧠✨\n\nTake a break—you earned it!`,
+        );
+      }
+
+      // --- INIT & PHASE 1 (Grades & Subjects) ---
+      window.onload = async () => {
+        try {
+          const res = await fetch(`${API_URL}/grades`);
+          if (!res.ok) throw new Error("Backend connection failed.");
+          const data = await res.json();
+          const container = document.getElementById("gradeButtons");
+          container.innerHTML = "";
+          data.grades.forEach((grade) => {
+            const btn = document.createElement("button");
+            btn.className = "btn-subject";
+            btn.innerText = grade;
+            btn.onclick = () => loadSubjects(grade);
+            container.appendChild(btn);
+          });
+        } catch (e) {
+          console.error("Initialization Error:", e);
+          alert("Cannot connect to backend. Ensure Uvicorn is running.");
+          document.getElementById("gradeButtons").innerHTML =
+            "<p class='text-danger'>Cannot connect to AI Backend. Ensure Uvicorn is running on port 8000.</p>";
+        }
+      };
+
+      async function loadSubjects(grade) {
+        currentGrade = grade;
+        switchPhase("phase1b");
+        try {
+          const res = await fetch(
+            `${API_URL}/subjects?grade=${encodeURIComponent(grade)}`,
+          );
+          const data = await res.json();
+          const container = document.getElementById("subjectButtons");
+          container.innerHTML = "";
+          data.subjects.forEach((sub) => {
+            const btn = document.createElement("button");
+            btn.className = "btn-subject";
+            btn.innerText = sub;
+            btn.onclick = () => loadLevelTest(sub);
+            container.appendChild(btn);
+          });
+        } catch (e) {
+          console.error("Subjects Load Error:", e);
+          alert("Error loading subjects.");
+        }
+      }
+
+      function switchPhase(phaseId) {
+        document
+          .querySelectorAll(".phase")
+          .forEach((p) => p.classList.remove("active-phase"));
+        document.getElementById(phaseId).classList.add("active-phase");
+
+        // ADHD-OPTIMIZATION: Start session timer when entering phase 3
+        if (phaseId === "phase3" && !sessionStartTime) {
+          startSessionTimer();
+        }
+      }
+
+      // --- PHASE 2: LEVEL TEST (1 Card at a Time) ---
+      async function loadLevelTest(subject) {
+        switchPhase("phase2");
+        levelTestSelections = {};
+        currentTestIndex = 0;
+
+        try {
+          const res = await fetch(
+            `${API_URL}/level-test?subject=${encodeURIComponent(subject)}`,
+          );
+          const data = await res.json();
+          levelTestQuestions = data.questions;
+          renderTestQuestion();
+        } catch (e) {
+          console.error("Level Test Load Error:", e);
+          alert("Error loading the calibration test.");
+        }
+      }
+
+      function renderTestQuestion() {
+        const container = document.getElementById("levelTestArea");
+        container.innerHTML = "";
+
+        if (currentTestIndex >= levelTestQuestions.length) {
+          submitLevelTest();
+          return;
         }
 
-        function showBreakReminder() {
-            const hasUserConfirmed = confirm("🎉 Wow! You've been focused for 25 minutes!\n\nYour brain deserves a 5-minute break. Take some water, stretch, then come back stronger! ✨\n\nReady to continue?");
-            if (hasUserConfirmed) {
-                breakReminderShown = false; // Reset for next cycle
-                sessionStartTime = Date.now(); // Restart timer
-            }
-        }
+        const q = levelTestQuestions[currentTestIndex];
+        document.getElementById("testProgress").innerText =
+          `Question ${currentTestIndex + 1} / ${levelTestQuestions.length}`;
 
-        function incrementTopicCount() {
-            sessionTopicsLearned++;
-            document.getElementById("topicsCount").innerText = sessionTopicsLearned;
-        }
+        const block = document.createElement("div");
+        block.className = "level-q-container";
+        block.innerHTML = `<h4 class="mb-4">${q.question}</h4>`;
 
-        function incrementQuestionCount() {
-            sessionQuestionsCorrect++;
-        }
+        const shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
 
-        function showSessionSummary() {
-            const mins = Math.floor((Date.now() - sessionStartTime) / 60000);
-            alert(`🎓 AWESOME SESSION!\n\nYou learned ${sessionTopicsLearned} concepts in ${mins} minutes!\n\nYou grew your brain. Literally. 🧠✨\n\nTake a break—you earned it!`);
-        }
-
-        // --- INIT & PHASE 1 (Grades & Subjects) ---
-        window.onload = async () => {
-            try {
-                const res = await fetch(`${API_URL}/grades`);
-                if (!res.ok) throw new Error("Backend connection failed.");
-                const data = await res.json();
-                const container = document.getElementById("gradeButtons");
-                container.innerHTML = "";
-                data.grades.forEach(grade => {
-                    const btn = document.createElement("button");
-                    btn.className = "btn-subject";
-                    btn.innerText = grade;
-                    btn.onclick = () => loadSubjects(grade);
-                    container.appendChild(btn);
-                });
-            } catch(e) {
-                console.error("Initialization Error:", e);
-                alert("Cannot connect to backend. Ensure Uvicorn is running.");
-                document.getElementById("gradeButtons").innerHTML = "<p class='text-danger'>Cannot connect to AI Backend. Ensure Uvicorn is running on port 8000.</p>";
-            }
-        };
-
-        async function loadSubjects(grade) {
-            currentGrade = grade;
-            switchPhase("phase1b");
-            try {
-                const res = await fetch(`${API_URL}/subjects?grade=${encodeURIComponent(grade)}`);
-                const data = await res.json();
-                const container = document.getElementById("subjectButtons");
-                container.innerHTML = "";
-                data.subjects.forEach(sub => {
-                    const btn = document.createElement("button");
-                    btn.className = "btn-subject";
-                    btn.innerText = sub;
-                    btn.onclick = () => loadLevelTest(sub);
-                    container.appendChild(btn);
-                });
-            } catch(e) {
-                console.error("Subjects Load Error:", e);
-                alert("Error loading subjects.");
-            }
-        }
-
-        function switchPhase(phaseId) {
-            document.querySelectorAll('.phase').forEach(p => p.classList.remove('active-phase'));
-            document.getElementById(phaseId).classList.add('active-phase');
-            
-            // ADHD-OPTIMIZATION: Start session timer when entering phase 3
-            if (phaseId === "phase3" && !sessionStartTime) {
-                startSessionTimer();
-            }
-        }
-
-        // --- PHASE 2: LEVEL TEST (1 Card at a Time) ---
-        async function loadLevelTest(subject) {
-            switchPhase("phase2");
-            levelTestSelections = {}; 
-            currentTestIndex = 0;
-            
-            try {
-                const res = await fetch(`${API_URL}/level-test?subject=${encodeURIComponent(subject)}`);
-                const data = await res.json();
-                levelTestQuestions = data.questions;
-                renderTestQuestion();
-            } catch(e) {
-                console.error("Level Test Load Error:", e);
-                alert("Error loading the calibration test.");
-            }
-        }
-
-        function renderTestQuestion() {
-            const container = document.getElementById("levelTestArea");
-            container.innerHTML = "";
-            
-            if (currentTestIndex >= levelTestQuestions.length) {
-                submitLevelTest();
-                return;
-            }
-
-            const q = levelTestQuestions[currentTestIndex];
-            document.getElementById("testProgress").innerText = `Question ${currentTestIndex + 1} / ${levelTestQuestions.length}`;
-            
-            const block = document.createElement("div");
-            block.className = "level-q-container";
-            block.innerHTML = `<h4 class="mb-4">${q.question}</h4>`;
-            
-            const shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
-            
-            shuffledOptions.forEach((opt) => {
-                const btn = document.createElement("button");
-                btn.className = "level-option";
-                btn.innerText = opt.text;
-                btn.onclick = () => {
-                    levelTestSelections[currentTestIndex] = opt.difficulty;
-                    setTimeout(() => {
-                        currentTestIndex++;
-                        renderTestQuestion();
-                    }, 300); // Quick auto-advance delay
-                };
-                block.appendChild(btn);
-            });
-            
-            container.appendChild(block);
-        }
-
-        async function submitLevelTest() {
-            const answersArr = Object.values(levelTestSelections);
-            if(answersArr.length === 0) answersArr.push(2); // Fallback to intermediate
-
-            try {
-                const res = await fetch(`${API_URL}/calculate-level`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ answers: answersArr })
-                });
-                const data = await res.json();
-                
-                currentLevel = data.level || "Intermediate";
-                document.getElementById("levelBadge").innerText = `${currentGrade} | Level: ${currentLevel}`;
-                switchPhase("phase3");
-            } catch(e) {
-                console.error("Calculation Error:", e);
-                alert("Error calculating level.");
-                document.getElementById("levelBadge").innerText = `${currentGrade} | Level: Intermediate`;
-                switchPhase("phase3");
-            }
-        }
-
-        // --- PHASE 3: DYNAMIC FLASHCARDS & RAG ---
-        // More robust cleaner to guarantee asterisks turn into strong tags and remove stray markers
-        const clean = (text) => text ? text
-            .replace(/\*\*\s*(.*?)\s*\*\*/g, "<strong>$1</strong>")
-            .replace(/\*+/g, "")
-            : "";
-
-        document.getElementById("questionInput").addEventListener("keypress", function(event) {
-            if (event.key === "Enter") { event.preventDefault(); generateAnswer(); }
+        shuffledOptions.forEach((opt) => {
+          const btn = document.createElement("button");
+          btn.className = "level-option";
+          btn.innerText = opt.text;
+          btn.onclick = () => {
+            levelTestSelections[currentTestIndex] = opt.difficulty;
+            setTimeout(() => {
+              currentTestIndex++;
+              renderTestQuestion();
+            }, 300); // Quick auto-advance delay
+          };
+          block.appendChild(btn);
         });
 
-        async function generateAnswer() {
-            const input = document.getElementById('questionInput').value.trim();
-            if(!input) return;
+        container.appendChild(block);
+      }
 
-            document.getElementById('loader').style.display = "block";
-            document.getElementById('answerSection').style.display = "none";
+      async function submitLevelTest() {
+        const answersArr = Object.values(levelTestSelections);
+        if (answersArr.length === 0) answersArr.push(2); // Fallback to intermediate
 
-            try {
-                const response = await fetch(`${API_URL}/ask?user_query=${encodeURIComponent(input)}&student_level=${currentLevel}`);
-                const data = await response.json();
-                
-                buildDynamicSteps(data);
-                incrementTopicCount(); // ADHD-OPTIMIZATION: Track learned topics
-                
-                document.getElementById('loader').style.display = "none";
-                document.getElementById('answerSection').style.display = "block";
-                showStep(0);
-            } catch(e) {
-                console.error("AI Gen Error:", e);
-                alert("PRISM is having trouble connecting to the knowledge base or parsing the AI response. Check the backend terminal.");
-                document.getElementById('loader').style.display = "none";
-            }
+        try {
+          const res = await fetch(`${API_URL}/calculate-level`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ answers: answersArr }),
+          });
+          const data = await res.json();
+
+          currentLevel = data.level || "Intermediate";
+          document.getElementById("levelBadge").innerText =
+            `${currentGrade} | Level: ${currentLevel}`;
+          switchPhase("phase3");
+        } catch (e) {
+          console.error("Calculation Error:", e);
+          alert("Error calculating level.");
+          document.getElementById("levelBadge").innerText =
+            `${currentGrade} | Level: Intermediate`;
+          switchPhase("phase3");
+        }
+      }
+
+      // --- PHASE 3: DYNAMIC FLASHCARDS & RAG ---
+      // More robust cleaner to guarantee asterisks turn into strong tags and remove stray markers
+      const clean = (text) =>
+        text
+          ? text
+              .replace(/\*\*\s*(.*?)\s*\*\*/g, "<strong>$1</strong>")
+              .replace(/\*+/g, "")
+          : "";
+
+      document
+        .getElementById("questionInput")
+        .addEventListener("keypress", function (event) {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            generateAnswer();
+          }
+        });
+
+      async function generateAnswer() {
+        const input = document.getElementById("questionInput").value.trim();
+        if (!input) return;
+
+        document.getElementById("loader").style.display = "block";
+        document.getElementById("answerSection").style.display = "none";
+
+        try {
+          const response = await fetch(
+            `${API_URL}/ask?user_query=${encodeURIComponent(input)}&student_level=${currentLevel}`,
+          );
+          const data = await response.json();
+
+          buildDynamicSteps(data);
+          incrementTopicCount(); // ADHD-OPTIMIZATION: Track learned topics
+
+          document.getElementById("loader").style.display = "none";
+          document.getElementById("answerSection").style.display = "block";
+          showStep(0);
+        } catch (e) {
+          console.error("AI Gen Error:", e);
+          alert(
+            "PRISM is having trouble connecting to the knowledge base or parsing the AI response. Check the backend terminal.",
+          );
+          document.getElementById("loader").style.display = "none";
+        }
+      }
+
+      function buildDynamicSteps(data) {
+        dynamicStepsData = [];
+        currentQuiz = data.quiz;
+        const title = data.title ? data.title.replace(/\*+/g, "") : "Concept";
+
+        // 1. Flashcards with up to 3 bullet points each
+        if (Array.isArray(data.flashcards) && data.flashcards.length > 0) {
+          data.flashcards.slice(0, 2).forEach((card, idx) => {
+            const bullets = Array.isArray(card.bullet_points)
+              ? card.bullet_points.slice(0, 3)
+              : [];
+            let listHtml = '<ul class="key-points-list">';
+            bullets.forEach((point) => {
+              listHtml += `<li>${clean(point)}</li>`;
+            });
+            listHtml += "</ul>";
+
+            dynamicStepsData.push({
+              type: "knowledge",
+              title: card.title || `Flashcard ${idx + 1}`,
+              content: listHtml,
+              rawText: bullets.join(" "),
+              icon: "fa-brain",
+            });
+          });
+        } else if (data.flashcard_content) {
+          dynamicStepsData.push({
+            type: "knowledge",
+            title: title,
+            content: clean(data.flashcard_content),
+            rawText: data.flashcard_content,
+            icon: "fa-brain",
+          });
         }
 
-        function buildDynamicSteps(data) {
-            dynamicStepsData = [];
-            currentQuiz = data.quiz;
-            const title = data.title ? data.title.replace(/\*+/g, "") : "Concept";
-            
-            // 1. Flashcards with up to 3 bullet points each
-            if (Array.isArray(data.flashcards) && data.flashcards.length > 0) {
-                data.flashcards.slice(0, 2).forEach((card, idx) => {
-                    const bullets = Array.isArray(card.bullet_points) ? card.bullet_points.slice(0, 3) : [];
-                    let listHtml = '<ul class="key-points-list">';
-                    bullets.forEach(point => {
-                        listHtml += `<li>${clean(point)}</li>`;
-                    });
-                    listHtml += '</ul>';
-
-                    dynamicStepsData.push({
-                        type: 'knowledge',
-                        title: card.title || `Flashcard ${idx + 1}`,
-                        content: listHtml,
-                        rawText: bullets.join(' '),
-                        icon: 'fa-brain'
-                    });
-                });
-            } else if (data.flashcard_content) {
-                dynamicStepsData.push({
-                    type: 'knowledge',
-                    title: title,
-                    content: clean(data.flashcard_content),
-                    rawText: data.flashcard_content,
-                    icon: 'fa-brain'
-                });
-            }
-
-            // 2. Visual Card (Inserted right after Part 1)
-            if (data.visual && data.visual.objects && data.visual.objects.length > 0) {
-                dynamicStepsData.push({
-                    type: 'visual',
-                    title: 'Visual Blueprint',
-                    visualData: data.visual,
-                    icon: 'fa-project-diagram'
-                });
-            }
-
-            // 3. Remaining Knowledge Cards - REMOVED since now single content
-
-            // 4. Analogy Card
-            if (data.analogy) {
-                dynamicStepsData.push({
-                    type: 'analogy',
-                    title: 'Power-Up Analogy',
-                    content: `<div style="font-size: 1.3rem; font-weight: 600; color: var(--primary-blue);">${clean(data.analogy)}</div>`,
-                    rawText: data.analogy,
-                    icon: 'fa-gamepad'
-                });
-            }
-
-            // 5. Quiz Card
-            if (data.quiz) {
-                dynamicStepsData.push({ type: 'quiz', title: 'Knowledge Check', icon: 'fa-bolt' });
-            }
-
-            // 6. Revision Card
-            if (data.key_points && data.key_points.length > 0) {
-                let listHtml = '<ul class="key-points-list">';
-                data.key_points.forEach(kp => listHtml += `<li>${clean(kp)}</li>`);
-                listHtml += '</ul>';
-                dynamicStepsData.push({
-                    type: 'revision',
-                    title: '📌 Quick Revision',
-                    content: listHtml,
-                    icon: 'fa-star'
-                });
-            }
-            
-            // Generate dots
-            const dotsContainer = document.getElementById("progressDots");
-            dotsContainer.innerHTML = dynamicStepsData.map(() => `<span class="dot"></span>`).join('');
+        // 2. Visual Card (Inserted right after Part 1)
+        if (
+          data.visual &&
+          data.visual.objects &&
+          data.visual.objects.length > 0
+        ) {
+          dynamicStepsData.push({
+            type: "visual",
+            title: "Visual Blueprint",
+            visualData: data.visual,
+            icon: "fa-project-diagram",
+          });
         }
-        
-        // --- SVG DIAGRAM GENERATOR ---
-        function renderDiagram(visualData) {
-            if (!visualData) return '';
-            
-            let svg = `
+
+        // 3. Remaining Knowledge Cards - REMOVED since now single content
+
+        // 4. Analogy Card
+        if (data.analogy) {
+          dynamicStepsData.push({
+            type: "analogy",
+            title: "Power-Up Analogy",
+            content: `<div style="font-size: 1.3rem; font-weight: 600; color: var(--primary-blue);">${clean(data.analogy)}</div>`,
+            rawText: data.analogy,
+            icon: "fa-gamepad",
+          });
+        }
+
+        // 5. Quiz Card
+        if (data.quiz) {
+          dynamicStepsData.push({
+            type: "quiz",
+            title: "Knowledge Check",
+            icon: "fa-bolt",
+          });
+        }
+
+        // 6. Revision Card
+        if (data.key_points && data.key_points.length > 0) {
+          let listHtml = '<ul class="key-points-list">';
+          data.key_points.forEach(
+            (kp) => (listHtml += `<li>${clean(kp)}</li>`),
+          );
+          listHtml += "</ul>";
+          dynamicStepsData.push({
+            type: "revision",
+            title: "📌 Quick Revision",
+            content: listHtml,
+            rawText: data.key_points.join(" "), // <-- ADD THIS LINE
+            icon: "fa-star",
+          });
+        }
+
+        // Generate dots
+        const dotsContainer = document.getElementById("progressDots");
+        dotsContainer.innerHTML = dynamicStepsData
+          .map(() => `<span class="dot"></span>`)
+          .join("");
+      }
+
+      // --- SVG DIAGRAM GENERATOR ---
+      function renderDiagram(visualData) {
+        if (!visualData) return "";
+
+        let svg = `
                 <div class="svg-container" style="max-width: 450px; margin: 0 auto; background: white;">
                 <svg viewBox="0 0 450 450" style="width:100%; display:block; font-family: 'Nunito', sans-serif;">
                     <defs>
@@ -570,108 +858,118 @@
                         </marker>
                     </defs>`;
 
-            // Render standard objects
-            (visualData.objects || []).forEach(obj => {
-                svg += `<g id="svg-${obj.id}" class="diagram-element">`;
-                
-                let rectWidth = obj.width || 140;
-                let rectHeight = obj.height || 50;
+        // Render standard objects
+        (visualData.objects || []).forEach((obj) => {
+          svg += `<g id="svg-${obj.id}" class="diagram-element">`;
 
-                if (obj.shape === 'rect') {
-                    svg += `<rect x="${obj.x}" y="${obj.y}" width="${rectWidth}" height="${rectHeight}" fill="#F8FAFC" stroke="var(--text-dark)" stroke-width="2.5" rx="8"/>`;
-                } else if (obj.shape === 'circle') {
-                    svg += `<circle cx="${obj.x}" cy="${obj.y}" r="${obj.r || 30}" fill="#F8FAFC" stroke="var(--text-dark)" stroke-width="2.5"/>`;
-                } else if (obj.shape === 'line') {
-                    svg += `<line x1="${obj.x1}" y1="${obj.y1}" x2="${obj.x2}" y2="${obj.y2}" stroke="var(--text-dark)" stroke-width="2.5"/>`;
-                }
-                
-                // Perfect Text Centering using dominant-baseline
-                if (obj.label) {
-                    let lx, ly;
-                    if (obj.shape === 'rect') {
-                        lx = obj.x + (rectWidth / 2);
-                        ly = obj.y + (rectHeight / 2); 
-                    } else if (obj.shape === 'circle') {
-                        lx = obj.x;
-                        ly = obj.y;
-                    } else {
-                        lx = (obj.x1 + obj.x2) / 2;
-                        ly = ((obj.y1 + obj.y2) / 2) - 10;
-                    }
-                    svg += `<text x="${lx}" y="${ly}" font-size="14" fill="var(--text-dark)" text-anchor="middle" dominant-baseline="middle" font-weight="700">${obj.label}</text>`;
-                }
-                svg += `</g>`;
-            });
+          let rectWidth = obj.width || 140;
+          let rectHeight = obj.height || 50;
 
-            // Render motion arrows
-            (visualData.arrows || []).forEach(arr => {
-                let isVertical = Math.abs(arr.from[0] - arr.to[0]) < 20;
-                let motionClass = isVertical ? "arrow-motion-y" : "arrow-motion-x";
-                
-                svg += `<g id="svg-${arr.id}" class="diagram-element ${motionClass}">`;
-                svg += `<line x1="${arr.from[0]}" y1="${arr.from[1]}" x2="${arr.to[0]}" y2="${arr.to[1]}" stroke="var(--primary-blue)" stroke-width="3" marker-end="url(#arrow)"/>`;
-                
-                if (arr.label) {
-                    let lx = (arr.from[0] + arr.to[0]) / 2;
-                    let ly = ((arr.from[1] + arr.to[1]) / 2);
-                    
-                    // Nudge text aside if it's a vertical drop arrow so it doesn't cross the line
-                    if (isVertical) {
-                        lx += 30; 
-                    } else {
-                        ly -= 12; // Nudge up for horizontal arrows
-                    }
-                    
-                    svg += `<text x="${lx}" y="${ly}" font-size="12" fill="var(--primary-blue)" text-anchor="middle" dominant-baseline="middle" font-weight="700">${arr.label}</text>`;
-                }
-                svg += `</g>`;
-            });
+          if (obj.shape === "rect") {
+            svg += `<rect x="${obj.x}" y="${obj.y}" width="${rectWidth}" height="${rectHeight}" fill="#F8FAFC" stroke="var(--text-dark)" stroke-width="2.5" rx="8"/>`;
+          } else if (obj.shape === "circle") {
+            svg += `<circle cx="${obj.x}" cy="${obj.y}" r="${obj.r || 30}" fill="#F8FAFC" stroke="var(--text-dark)" stroke-width="2.5"/>`;
+          } else if (obj.shape === "line") {
+            svg += `<line x1="${obj.x1}" y1="${obj.y1}" x2="${obj.x2}" y2="${obj.y2}" stroke="var(--text-dark)" stroke-width="2.5"/>`;
+          }
 
-            svg += `</svg></div>`;
-            return svg;
-        }
+          // Perfect Text Centering using dominant-baseline
+          if (obj.label) {
+            let lx, ly;
+            if (obj.shape === "rect") {
+              lx = obj.x + rectWidth / 2;
+              ly = obj.y + rectHeight / 2;
+            } else if (obj.shape === "circle") {
+              lx = obj.x;
+              ly = obj.y;
+            } else {
+              lx = (obj.x1 + obj.x2) / 2;
+              ly = (obj.y1 + obj.y2) / 2 - 10;
+            }
+            svg += `<text x="${lx}" y="${ly}" font-size="14" fill="var(--text-dark)" text-anchor="middle" dominant-baseline="middle" font-weight="700">${obj.label}</text>`;
+          }
+          svg += `</g>`;
+        });
 
-        // --- SVG ANIMATION ENGINE ---
-        function animateDiagram(animationSteps) {
-            animationTimers.forEach(clearTimeout);
-            animationTimers = [];
+        // Render motion arrows
+        (visualData.arrows || []).forEach((arr) => {
+          let isVertical = Math.abs(arr.from[0] - arr.to[0]) < 20;
+          let motionClass = isVertical ? "arrow-motion-y" : "arrow-motion-x";
 
-            if (!animationSteps || !Array.isArray(animationSteps)) return;
+          svg += `<g id="svg-${arr.id}" class="diagram-element ${motionClass}">`;
+          svg += `<line x1="${arr.from[0]}" y1="${arr.from[1]}" x2="${arr.to[0]}" y2="${arr.to[1]}" stroke="var(--primary-blue)" stroke-width="3" marker-end="url(#arrow)"/>`;
 
-            document.querySelectorAll('.diagram-element').forEach(el => el.style.opacity = '0');
+          if (arr.label) {
+            let lx = (arr.from[0] + arr.to[0]) / 2;
+            let ly = (arr.from[1] + arr.to[1]) / 2;
 
-            animationSteps.forEach((step, index) => {
-                let timer = setTimeout(() => {
-                    let el = document.getElementById(`svg-${step.show}`);
-                    if (el) el.style.opacity = '1';
-                }, (index * 800) + 400); 
-                animationTimers.push(timer);
-            });
-        }
+            // Nudge text aside if it's a vertical drop arrow so it doesn't cross the line
+            if (isVertical) {
+              lx += 30;
+            } else {
+              ly -= 12; // Nudge up for horizontal arrows
+            }
 
-        function showStep(index) {
-            if (index < 0 || index >= dynamicStepsData.length) return;
-            
-            window.speechSynthesis.cancel(); 
-            currentStepIndex = index;
-            const stepData = dynamicStepsData[index];
-            
-            const allDots = document.querySelectorAll('#progressDots .dot');
-            allDots.forEach((dot, i) => {
-                dot.classList.toggle('active', i <= index);
-            });
+            svg += `<text x="${lx}" y="${ly}" font-size="12" fill="var(--primary-blue)" text-anchor="middle" dominant-baseline="middle" font-weight="700">${arr.label}</text>`;
+          }
+          svg += `</g>`;
+        });
 
-            const cardContainer = document.getElementById("dynamicCardContainer");
-            let innerContent = "";
-            
-            if (stepData.type === 'knowledge' || stepData.type === 'analogy' || stepData.type === 'revision') {
-                let audioHTML = stepData.rawText ? 
-                    `<div class="audio-controls">
+        svg += `</svg></div>`;
+        return svg;
+      }
+
+      // --- SVG ANIMATION ENGINE ---
+      function animateDiagram(animationSteps) {
+        animationTimers.forEach(clearTimeout);
+        animationTimers = [];
+
+        if (!animationSteps || !Array.isArray(animationSteps)) return;
+
+        document
+          .querySelectorAll(".diagram-element")
+          .forEach((el) => (el.style.opacity = "0"));
+
+        animationSteps.forEach((step, index) => {
+          let timer = setTimeout(
+            () => {
+              let el = document.getElementById(`svg-${step.show}`);
+              if (el) el.style.opacity = "1";
+            },
+            index * 800 + 400,
+          );
+          animationTimers.push(timer);
+        });
+      }
+
+      function showStep(index) {
+        if (index < 0 || index >= dynamicStepsData.length) return;
+
+        window.speechSynthesis.cancel();
+        currentStepIndex = index;
+        const stepData = dynamicStepsData[index];
+
+        const allDots = document.querySelectorAll("#progressDots .dot");
+        allDots.forEach((dot, i) => {
+          dot.classList.toggle("active", i <= index);
+        });
+
+        const cardContainer = document.getElementById("dynamicCardContainer");
+        let innerContent = "";
+
+        if (
+          stepData.type === "knowledge" ||
+          stepData.type === "analogy" ||
+          stepData.type === "revision"
+        ) {
+          let audioHTML = stepData.rawText
+            ? `<div class="audio-controls">
                         <i class="fas fa-volume-up speaker-icon" id="audio-play-${index}" onclick="toggleAudio('audio-text-${index}', ${index})" title="Play/Pause"></i>
                         <i class="fas fa-undo speaker-icon" onclick="restartAudio('audio-text-${index}', ${index})" title="Restart" style="margin-left:10px; font-size: 1rem;"></i>
-                     </div>` : '';
+                     </div>`
+            : "";
 
-                innerContent = `
+          innerContent = `
                     <span class="step-indicator">Step ${index + 1} of ${dynamicStepsData.length}</span>
                     <div class="visual-icon"><i class="fas ${stepData.icon}"></i></div>
                     <h3 class="mb-3 d-flex align-items-center justify-content-between">
@@ -679,225 +977,233 @@
                     </h3>
                     <p class="content-text" id="audio-text-${index}">${stepData.content}</p>
                 `;
-            } else if (stepData.type === 'visual') {
-                innerContent = `
+        } else if (stepData.type === "visual") {
+          innerContent = `
                     <span class="step-indicator">Step ${index + 1} of ${dynamicStepsData.length}</span>
                     <div class="visual-icon"><i class="fas ${stepData.icon}"></i></div>
                     <h3 class="mb-3 text-center">${stepData.title}</h3>
                     ${renderDiagram(stepData.visualData)}
                 `;
-                setTimeout(() => animateDiagram(stepData.visualData.animation_steps), 50);
-                
-            } else if (stepData.type === 'quiz') {
-                innerContent = `
+          setTimeout(
+            () => animateDiagram(stepData.visualData.animation_steps),
+            50,
+          );
+        } else if (stepData.type === "quiz") {
+          innerContent = `
                     <span class="step-indicator">Step ${index + 1} of ${dynamicStepsData.length}</span>
                     <h3 class="mb-4">${currentQuiz.question}</h3>
                     <div id="mcqOptions" class="d-flex flex-column gap-3">
-                        ${currentQuiz.options.map((opt, idx) => {
-                            const cleanOpt = opt.replace(/^[A-D][\.\)]\s*/, '');
-                            return `<button class="btn mcq-btn" onclick="checkAnswer(this, \`${opt.replace(/`/g, "'")}\`)"><strong>${['A','B','C','D'][idx]}.</strong> ${clean(cleanOpt)}</button>`;
-                        }).join('')}
+                        ${currentQuiz.options
+                          .map((opt, idx) => {
+                            const cleanOpt = opt.replace(/^[A-D][\.\)]\s*/, "");
+                            return `<button class="btn mcq-btn" onclick="checkAnswer(this, \`${opt.replace(/`/g, "'")}\`)"><strong>${["A", "B", "C", "D"][idx]}.</strong> ${clean(cleanOpt)}</button>`;
+                          })
+                          .join("")}
                     </div>
                     <div id="mcqMessage" class="mt-4 p-3 rounded" style="display: none; font-weight: 600;"></div>
                 `;
-            }
-
-            // Nav Buttons
-            let navHTML = `<div class="step-nav mt-4 pt-4 border-top">`;
-            if (index > 0) navHTML += `<button class="btn btn-nav" onclick="showStep(${index - 1})">← Previous</button>`;
-            else navHTML += `<div></div>`;
-            
-            if (index < dynamicStepsData.length - 1) {
-                navHTML += `<button class="btn btn-nav btn-nav-primary" onclick="showStep(${index + 1})">Next →</button>`;
-            } else {
-                navHTML += `<button class="btn btn-nav" style="color: var(--primary-green); border-color: var(--primary-green);">Mission Complete <i class="fas fa-check ms-2"></i></button>`;
-            }
-            navHTML += `</div>`;
-
-            cardContainer.innerHTML = innerContent + navHTML;
-            cardContainer.classList.add('active-step');
         }
 
-        // --- ACCESSIBILITY TTS CONTROLS (Word Highlighting) ---
-        function wrapWordsInDOM(el, prefix) {
-            if (el.dataset.wrapped === "true") return;
+        // Nav Buttons
+        let navHTML = `<div class="step-nav mt-4 pt-4 border-top">`;
+        if (index > 0)
+          navHTML += `<button class="btn btn-nav" onclick="showStep(${index - 1})">← Previous</button>`;
+        else navHTML += `<div></div>`;
 
-            let wordIndex = 0;
+        if (index < dynamicStepsData.length - 1) {
+          navHTML += `<button class="btn btn-nav btn-nav-primary" onclick="showStep(${index + 1})">Next →</button>`;
+        } else {
+          navHTML += `<button class="btn btn-nav" style="color: var(--primary-green); border-color: var(--primary-green);">Mission Complete <i class="fas fa-check ms-2"></i></button>`;
+        }
+        navHTML += `</div>`;
 
-            function traverse(node) {
-                if (node.nodeType === 3) { // Text node
-                    const text = node.nodeValue;
-                    if (!text.trim()) return;
+        cardContainer.innerHTML = innerContent + navHTML;
+        cardContainer.classList.add("active-step");
+      }
+      // ===============================
+      // PRISM SIMPLE AUDIO ENGINE
+      // ===============================
 
-                    const fragment = document.createDocumentFragment();
-                    const tokens = text.split(/(\s+)/); 
-                    tokens.forEach(token => {
-                        if (token.trim()) {
-                            const span = document.createElement('span');
-                            span.id = `${prefix}-w${wordIndex}`;
-                            span.className = 'tts-word';
-                            span.textContent = token;
-                            fragment.appendChild(span);
-                            wordIndex++;
-                        } else {
-                            fragment.appendChild(document.createTextNode(token));
-                        }
-                    });
-                    node.parentNode.replaceChild(fragment, node);
-                } else if (node.nodeType === 1) { // Element node
-                    if (node.classList.contains('tts-word')) return;
-                    Array.from(node.childNodes).forEach(traverse);
-                }
+      let prismUtterance = null;
+      let prismSpeakingIndex = -1;
+
+      // Wrap words for highlighting
+      function wrapWords(el, prefix) {
+        if (el.dataset.wrapped === "true") return;
+
+        let words = el.innerText.split(/\s+/);
+
+        el.innerHTML = words
+          .map(
+            (word, i) =>
+              `<span id="${prefix}-w${i}" class="tts-word">${word}</span>`,
+          )
+          .join(" ");
+
+        el.dataset.wrapped = "true";
+      }
+
+      // Start speaking
+      function playAudio(elementId, index) {
+        const textEl = document.getElementById(elementId);
+        const playBtn = document.getElementById(`audio-play-${index}`);
+
+        if (!textEl) return;
+
+        // Extract text BEFORE wrapping
+        const text = textEl.innerText.trim();
+        if (!text) return;
+
+        // Wrap words for highlighting
+        wrapWords(textEl, elementId);
+
+        // Stop previous speech
+        speechSynthesis.cancel();
+
+        prismUtterance = new SpeechSynthesisUtterance(text);
+        prismUtterance.rate = 0.9;
+
+        prismSpeakingIndex = index;
+
+        if (playBtn) playBtn.className = "fas fa-pause speaker-icon";
+
+        prismUtterance.onboundary = (event) => {
+          if (event.name !== "word") return;
+
+          const words = text.substring(0, event.charIndex).trim().split(/\s+/);
+          const wordIndex = words.length - 1;
+
+          document
+            .querySelectorAll(`#${elementId} .tts-word`)
+            .forEach((w) => w.classList.remove("tts-active"));
+
+          const span = document.getElementById(`${elementId}-w${wordIndex}`);
+
+          if (span) span.classList.add("tts-active");
+        };
+
+        prismUtterance.onend = () => {
+          document
+            .querySelectorAll(`#${elementId} .tts-word`)
+            .forEach((w) => w.classList.remove("tts-active"));
+
+          if (playBtn) playBtn.className = "fas fa-volume-up speaker-icon";
+
+          prismSpeakingIndex = -1;
+        };
+
+        speechSynthesis.speak(prismUtterance);
+      }
+
+      // Toggle play/pause
+      function toggleAudio(elementId, index) {
+        const playBtn = document.getElementById(`audio-play-${index}`);
+
+        if (prismSpeakingIndex === index) {
+          if (speechSynthesis.paused) {
+            speechSynthesis.resume();
+            if (playBtn) playBtn.className = "fas fa-pause speaker-icon";
+          } else if (speechSynthesis.speaking) {
+            speechSynthesis.pause();
+            if (playBtn) playBtn.className = "fas fa-volume-up speaker-icon";
+          }
+        } else {
+          playAudio(elementId, index);
+        }
+      }
+      
+      // Restart audio
+      function restartAudio(elementId, index) {
+        speechSynthesis.cancel();
+        playAudio(elementId, index);
+      }
+
+      // --- MCQ VERIFICATION ---
+      function celebrateCorrectAnswer(btn) {
+        // ADHD DOPAMINE BOOST: Animated celebration emojis
+        const emojis = ["🎉", "✨", "🎊", "🧠", "⭐", "🚀", "💡"];
+        for (let i = 0; i < 5; i++) {
+          const emoji = document.createElement("div");
+          emoji.innerText = emojis[Math.floor(Math.random() * emojis.length)];
+          emoji.style.position = "fixed";
+          emoji.style.left = Math.random() * 100 + "vw";
+          emoji.style.top = "-20px";
+          emoji.style.fontSize = "2rem";
+          emoji.style.zIndex = 1000;
+          emoji.style.animation = "float-up 2s ease-out forwards";
+          document.body.appendChild(emoji);
+          setTimeout(() => emoji.remove(), 2000);
+        }
+
+        // Play celebratory sound (optional, browser must allow)
+        // For this implementation, we'll just use visual feedback
+      }
+
+      // --- MCQ VERIFICATION ---
+      function checkAnswer(btn, selectedStr) {
+        if (!currentQuiz) return;
+        const msgBox = document.getElementById("mcqMessage");
+        const allBtns = document
+          .getElementById("mcqOptions")
+          .querySelectorAll(".mcq-btn");
+
+        allBtns.forEach((b) => (b.disabled = true));
+        msgBox.style.display = "block";
+
+        // Clean the strings by removing potential markdown
+        const cleanSelected = clean(
+          selectedStr.replace(/^[A-D][\.\)]\s*/, "").trim(),
+        );
+        const cleanCorrectText = clean(
+          currentQuiz.correct.replace(/^[A-D][\.\)]\s*/, "").trim(),
+        );
+
+        // Determine the letter (A, B, C, D) of the clicked button
+        const selectedIndex = Array.from(allBtns).indexOf(btn);
+        const selectedLetter = ["A", "B", "C", "D"][selectedIndex];
+
+        // SMART MATCHING: Checks if the exact text matches OR if the AI just returned the letter (A/B/C/D)
+        const isCorrect =
+          cleanSelected === cleanCorrectText ||
+          currentQuiz.correct.includes(cleanSelected) ||
+          currentQuiz.correct.trim().toUpperCase() === selectedLetter;
+
+        if (isCorrect) {
+          btn.style.borderColor = "var(--primary-green)";
+          btn.style.backgroundColor = "var(--correct-bg)";
+          msgBox.style.color = "#1e5c3a";
+          msgBox.style.backgroundColor = "#eef8f1";
+          // ADHD-OPTIMIZED: Growth mindset + dopamine boost
+          msgBox.innerHTML = `<strong>🎉 YES! AMAZING!</strong> <br><br>You just grew your brain—literally! Neurons firing = learning happening! 🧠 <br><br><em>${clean(currentQuiz.explanation)}</em>`;
+
+          // CELEBRATION: Dopamine trigger—visual celebration
+          celebrateCorrectAnswer(btn);
+          incrementQuestionCount();
+        } else {
+          btn.style.borderColor = "#e9a1a8";
+          btn.style.backgroundColor = "var(--wrong-bg)";
+
+          // Highlight the actual correct option in green
+          allBtns.forEach((b, idx) => {
+            const btnLetter = ["A", "B", "C", "D"][idx];
+            const cleanBtnText = clean(
+              b.innerText.replace(/^[A-D][\.\)]\s*/, "").trim(),
+            );
+
+            if (
+              cleanBtnText.includes(cleanCorrectText) ||
+              currentQuiz.correct.trim().toUpperCase() === btnLetter
+            ) {
+              b.style.borderColor = "var(--primary-green)";
+              b.style.borderWidth = "2px";
             }
-
-            Array.from(el.childNodes).forEach(traverse);
-            el.dataset.wrapped = "true";
+          });
+          msgBox.style.color = "#7a1c24";
+          msgBox.style.backgroundColor = "#fdecec";
+          // ADHD-OPTIMIZED: Encouragement + explanation
+          msgBox.innerHTML = `<strong>💡 Great Effort!</strong> <br><br>Your brain is building. Every attempt is progress! Here's the right answer: <br><br><em>${clean(currentQuiz.explanation)}</em> <br><br><small>Tip: Next time, focus on this part.</small>`;
         }
-
-        function toggleAudio(elementId, index) {
-            const playBtn = document.getElementById(`audio-play-${index}`);
-            
-            if (window.speechSynthesis.speaking) {
-                if (window.speechSynthesis.paused) {
-                    window.speechSynthesis.resume();
-                    playBtn.className = "fas fa-pause speaker-icon";
-                } else {
-                    window.speechSynthesis.pause();
-                    playBtn.className = "fas fa-play speaker-icon";
-                }
-            } else {
-                startAudio(elementId, index);
-            }
-        }
-
-        function restartAudio(elementId, index) {
-            window.speechSynthesis.resume(); 
-            window.speechSynthesis.cancel();
-            
-            setTimeout(() => startAudio(elementId, index), 50);
-        }
-
-        function startAudio(elementId, index) {
-            if (!window.speechSynthesis) {
-                alert("Text-to-speech is not supported in this browser.");
-                return;
-            }
-            window.speechSynthesis.resume();
-            window.speechSynthesis.cancel();
-            
-            const playBtn = document.getElementById(`audio-play-${index}`);
-            if(playBtn) playBtn.className = "fas fa-pause speaker-icon";
-            
-            const textEl = document.getElementById(elementId);
-            if (!textEl) return;
-
-            wrapWordsInDOM(textEl, elementId);
-            const spokenText = textEl.innerText;
-
-            const utterance = new SpeechSynthesisUtterance(spokenText);
-            utterance.rate = 0.9;
-            
-            utterance.onboundary = (event) => {
-                if (event.name === 'word') {
-                    document.querySelectorAll(`#${elementId} .tts-word`).forEach(s => s.classList.remove('tts-active'));
-                    
-                    const textUpToChar = spokenText.substring(0, event.charIndex);
-                    const wordIndex = textUpToChar.trim().split(/\s+/).filter(w => w.length > 0).length;
-
-                    const currentWordSpan = document.getElementById(`${elementId}-w${wordIndex}`);
-                    if (currentWordSpan) {
-                        currentWordSpan.classList.add('tts-active');
-                    }
-                }
-            };
-            
-            utterance.onend = () => {
-                document.querySelectorAll(`#${elementId} .tts-word`).forEach(s => s.classList.remove('tts-active'));
-                if(playBtn) playBtn.className = "fas fa-volume-up speaker-icon";
-            };
-
-            utterance.onerror = () => {
-                document.querySelectorAll(`#${elementId} .tts-word`).forEach(s => s.classList.remove('tts-active'));
-                if(playBtn) playBtn.className = "fas fa-volume-up speaker-icon";
-            };
-
-            window.speechSynthesis.speak(utterance);
-        }
-
-        // --- MCQ VERIFICATION ---
-        function celebrateCorrectAnswer(btn) {
-            // ADHD DOPAMINE BOOST: Animated celebration emojis
-            const emojis = ['🎉', '✨', '🎊', '🧠', '⭐', '🚀', '💡'];
-            for (let i = 0; i < 5; i++) {
-                const emoji = document.createElement('div');
-                emoji.innerText = emojis[Math.floor(Math.random() * emojis.length)];
-                emoji.style.position = 'fixed';
-                emoji.style.left = Math.random() * 100 + 'vw';
-                emoji.style.top = '-20px';
-                emoji.style.fontSize = '2rem';
-                emoji.style.zIndex = 1000;
-                emoji.style.animation = 'float-up 2s ease-out forwards';
-                document.body.appendChild(emoji);
-                setTimeout(() => emoji.remove(), 2000);
-            }
-            
-            // Play celebratory sound (optional, browser must allow)
-            // For this implementation, we'll just use visual feedback
-        }
-
-        // --- MCQ VERIFICATION ---
-        function checkAnswer(btn, selectedStr) {
-            if (!currentQuiz) return;
-            const msgBox = document.getElementById('mcqMessage');
-            const allBtns = document.getElementById('mcqOptions').querySelectorAll('.mcq-btn');
-            
-            allBtns.forEach(b => b.disabled = true); 
-            msgBox.style.display = 'block';
-
-            // Clean the strings by removing potential markdown
-            const cleanSelected = clean(selectedStr.replace(/^[A-D][\.\)]\s*/, '').trim());
-            const cleanCorrectText = clean(currentQuiz.correct.replace(/^[A-D][\.\)]\s*/, '').trim());
-
-            // Determine the letter (A, B, C, D) of the clicked button
-            const selectedIndex = Array.from(allBtns).indexOf(btn);
-            const selectedLetter = ['A', 'B', 'C', 'D'][selectedIndex];
-
-            // SMART MATCHING: Checks if the exact text matches OR if the AI just returned the letter (A/B/C/D)
-            const isCorrect = (cleanSelected === cleanCorrectText) || 
-                              (currentQuiz.correct.includes(cleanSelected)) || 
-                              (currentQuiz.correct.trim().toUpperCase() === selectedLetter);
-
-            if (isCorrect) {
-                btn.style.borderColor = 'var(--primary-green)';
-                btn.style.backgroundColor = 'var(--correct-bg)';
-                msgBox.style.color = '#1e5c3a';
-                msgBox.style.backgroundColor = '#eef8f1';
-                // ADHD-OPTIMIZED: Growth mindset + dopamine boost
-                msgBox.innerHTML = `<strong>🎉 YES! AMAZING!</strong> <br><br>You just grew your brain—literally! Neurons firing = learning happening! 🧠 <br><br><em>${clean(currentQuiz.explanation)}</em>`;
-                
-                // CELEBRATION: Dopamine trigger—visual celebration
-                celebrateCorrectAnswer(btn);
-                incrementQuestionCount();
-            } else {
-                btn.style.borderColor = '#e9a1a8';
-                btn.style.backgroundColor = 'var(--wrong-bg)';
-                
-                // Highlight the actual correct option in green
-                allBtns.forEach((b, idx) => {
-                    const btnLetter = ['A', 'B', 'C', 'D'][idx];
-                    const cleanBtnText = clean(b.innerText.replace(/^[A-D][\.\)]\s*/, '').trim());
-                    
-                    if(cleanBtnText.includes(cleanCorrectText) || currentQuiz.correct.trim().toUpperCase() === btnLetter) {
-                        b.style.borderColor = 'var(--primary-green)';
-                        b.style.borderWidth = '2px';
-                    }
-                });
-                msgBox.style.color = '#7a1c24';
-                msgBox.style.backgroundColor = '#fdecec';
-                // ADHD-OPTIMIZED: Encouragement + explanation
-                msgBox.innerHTML = `<strong>💡 Great Effort!</strong> <br><br>Your brain is building. Every attempt is progress! Here's the right answer: <br><br><em>${clean(currentQuiz.explanation)}</em> <br><br><small>Tip: Next time, focus on this part.</small>`;
-            }
-        }
+      }
     </script>
-</body>
+  </body>
 </html>
