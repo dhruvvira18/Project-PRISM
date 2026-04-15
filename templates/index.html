@@ -431,6 +431,15 @@
         <div id="subjectButtons" class="subject-grid"></div>
       </div>
 
+      <div id="phase1c" class="phase text-center">
+        <div style="height: 80px"></div>
+        <h2 style="color: var(--primary-blue)">Select a Chapter</h2>
+        <p class="text-muted" style="font-size: 1.2rem">
+          What are we focusing on today?
+        </p>
+        <div id="chapterButtons" class="subject-grid"></div>
+      </div>
+
       <div id="phase2" class="phase text-center">
         <div style="height: 60px"></div>
         <h2 class="mb-3" style="color: var(--primary-blue)">
@@ -440,7 +449,6 @@
           Pick the answers that make the most sense to you.
         </p>
         <p class="text-primary fw-bold" id="testProgress">Question 1 / 4</p>
-
         <div id="levelTestArea" class="text-start mt-4"></div>
       </div>
 
@@ -463,7 +471,6 @@
           <h2 class="mb-4" style="color: var(--primary-blue); opacity: 0.9">
             What do you want to learn today?
           </h2>
-
           <div class="input-group input-group-lg">
             <input
               type="text"
@@ -487,7 +494,6 @@
 
         <div class="answer-section" id="answerSection">
           <div class="progress-dots" id="progressDots"></div>
-
           <div
             class="step-card"
             id="dynamicCardContainer"
@@ -500,6 +506,8 @@
     <script>
       // --- GLOBAL STATE ---
       let currentGrade = "";
+      let currentSubject = "";
+      let currentChapter = ""; // Tracks the new chapter selection
       let currentLevel = "Intermediate";
       let levelTestSelections = {};
       let currentQuiz = null;
@@ -508,22 +516,16 @@
 
       let dynamicStepsData = [];
       let currentStepIndex = 0;
-      let currentAudioUtterance = null;
-      let isAudioPaused = false;
-
       let animationTimers = [];
 
-      // ADHD-OPTIMIZATION: Session Tracking for breaks & motivation
       let sessionStartTime = null;
       let sessionTopicsLearned = 0;
       let sessionQuestionsCorrect = 0;
       let breakReminderShown = false;
-      const FOCUS_DURATION_MS = 25 * 60 * 1000; // 25-minute Pomodoro
-      const BREAK_DURATION_MS = 5 * 60 * 1000; // 5-minute break
 
-      const API_URL = "";
+      const API_URL = ""; // Assuming relative path for FastAPI
 
-      // ADHD-OPTIMIZATION: Session time tracker & break reminders
+      // --- SESSION TIMER LOGIC ---
       function startSessionTimer() {
         if (!sessionStartTime) sessionStartTime = Date.now();
         setInterval(() => {
@@ -532,46 +534,40 @@
           const seconds = Math.floor((elapsedMs % 60000) / 1000);
           document.getElementById("sessionTimer").innerText =
             `${minutes}:${seconds.toString().padStart(2, "0")}`;
-
-          // ADHD Break Reminder: After 25 mins, prompt break
           if (minutes === 25 && !breakReminderShown) {
             breakReminderShown = true;
-            showBreakReminder();
+            if (
+              confirm(
+                "🎉 25 minutes of focus! Take a 5-minute break. Ready to continue?",
+              )
+            ) {
+              breakReminderShown = false;
+              sessionStartTime = Date.now();
+            }
           }
         }, 1000);
-      }
-
-      function showBreakReminder() {
-        const hasUserConfirmed = confirm(
-          "🎉 Wow! You've been focused for 25 minutes!\n\nYour brain deserves a 5-minute break. Take some water, stretch, then come back stronger! ✨\n\nReady to continue?",
-        );
-        if (hasUserConfirmed) {
-          breakReminderShown = false; // Reset for next cycle
-          sessionStartTime = Date.now(); // Restart timer
-        }
       }
 
       function incrementTopicCount() {
         sessionTopicsLearned++;
         document.getElementById("topicsCount").innerText = sessionTopicsLearned;
       }
-
       function incrementQuestionCount() {
         sessionQuestionsCorrect++;
       }
 
-      function showSessionSummary() {
-        const mins = Math.floor((Date.now() - sessionStartTime) / 60000);
-        alert(
-          `🎓 AWESOME SESSION!\n\nYou learned ${sessionTopicsLearned} concepts in ${mins} minutes!\n\nYou grew your brain. Literally. 🧠✨\n\nTake a break—you earned it!`,
-        );
+      function switchPhase(phaseId) {
+        document
+          .querySelectorAll(".phase")
+          .forEach((p) => p.classList.remove("active-phase"));
+        document.getElementById(phaseId).classList.add("active-phase");
+        if (phaseId === "phase3" && !sessionStartTime) startSessionTimer();
       }
 
-      // --- INIT & PHASE 1 (Grades & Subjects) ---
+      // --- INITIALIZATION ---
       window.onload = async () => {
         try {
           const res = await fetch(`${API_URL}/grades`);
-          if (!res.ok) throw new Error("Backend connection failed.");
           const data = await res.json();
           const container = document.getElementById("gradeButtons");
           container.innerHTML = "";
@@ -583,10 +579,8 @@
             container.appendChild(btn);
           });
         } catch (e) {
-          console.error("Initialization Error:", e);
-          alert("Cannot connect to backend. Ensure Uvicorn is running.");
           document.getElementById("gradeButtons").innerHTML =
-            "<p class='text-danger'>Cannot connect to AI Backend. Ensure Uvicorn is running on port 8000.</p>";
+            "<p class='text-danger'>Cannot connect to AI Backend.</p>";
         }
       };
 
@@ -604,50 +598,71 @@
             const btn = document.createElement("button");
             btn.className = "btn-subject";
             btn.innerText = sub;
-            btn.onclick = () => loadLevelTest(sub);
+            btn.onclick = () => loadChapters(sub); // Routes to chapters now
             container.appendChild(btn);
           });
         } catch (e) {
-          console.error("Subjects Load Error:", e);
-          alert("Error loading subjects.");
+          console.error(e);
         }
       }
 
-      function switchPhase(phaseId) {
-        document
-          .querySelectorAll(".phase")
-          .forEach((p) => p.classList.remove("active-phase"));
-        document.getElementById(phaseId).classList.add("active-phase");
+      async function loadChapters(subject) {
+        currentSubject = subject;
+        switchPhase("phase1c");
+        try {
+          const res = await fetch(
+            `${API_URL}/chapters?grade=${encodeURIComponent(currentGrade)}&subject=${encodeURIComponent(subject)}`,
+          );
+          const data = await res.json();
+          const container = document.getElementById("chapterButtons");
+          container.innerHTML = "";
 
-        // ADHD-OPTIMIZATION: Start session timer when entering phase 3
-        if (phaseId === "phase3" && !sessionStartTime) {
-          startSessionTimer();
+          if (data.chapters.length === 0) {
+            container.innerHTML =
+              "<p class='text-muted'>No chapters found in Supabase.</p>";
+            return;
+          }
+
+          data.chapters.forEach((chap) => {
+            const btn = document.createElement("button");
+            btn.className = "btn-subject";
+            btn.innerText = chap;
+            btn.onclick = () => {
+              currentChapter = chap;
+              loadLevelTest(subject);
+            };
+            container.appendChild(btn);
+          });
+        } catch (e) {
+          console.error(e);
         }
       }
 
-      // --- PHASE 2: LEVEL TEST (1 Card at a Time) ---
+      // --- LEVEL TEST ---
       async function loadLevelTest(subject) {
         switchPhase("phase2");
         levelTestSelections = {};
         currentTestIndex = 0;
-
         try {
           const res = await fetch(
             `${API_URL}/level-test?subject=${encodeURIComponent(subject)}`,
           );
           const data = await res.json();
           levelTestQuestions = data.questions;
+
+          if (levelTestQuestions.length === 0) {
+            submitLevelTest(); // Skip if no questions available
+            return;
+          }
           renderTestQuestion();
         } catch (e) {
-          console.error("Level Test Load Error:", e);
-          alert("Error loading the calibration test.");
+          submitLevelTest();
         }
       }
 
       function renderTestQuestion() {
         const container = document.getElementById("levelTestArea");
         container.innerHTML = "";
-
         if (currentTestIndex >= levelTestQuestions.length) {
           submitLevelTest();
           return;
@@ -661,7 +676,10 @@
         block.className = "level-q-container";
         block.innerHTML = `<h4 class="mb-4">${q.question}</h4>`;
 
-        const shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
+        // Parse options from JSONB if necessary
+        const options =
+          typeof q.options === "string" ? JSON.parse(q.options) : q.options;
+        const shuffledOptions = [...options].sort(() => Math.random() - 0.5);
 
         shuffledOptions.forEach((opt) => {
           const btn = document.createElement("button");
@@ -672,18 +690,16 @@
             setTimeout(() => {
               currentTestIndex++;
               renderTestQuestion();
-            }, 300); // Quick auto-advance delay
+            }, 300);
           };
           block.appendChild(btn);
         });
-
         container.appendChild(block);
       }
 
       async function submitLevelTest() {
         const answersArr = Object.values(levelTestSelections);
-        if (answersArr.length === 0) answersArr.push(2); // Fallback to intermediate
-
+        if (answersArr.length === 0) answersArr.push(2);
         try {
           const res = await fetch(`${API_URL}/calculate-level`, {
             method: "POST",
@@ -691,22 +707,17 @@
             body: JSON.stringify({ answers: answersArr }),
           });
           const data = await res.json();
-
           currentLevel = data.level || "Intermediate";
-          document.getElementById("levelBadge").innerText =
-            `${currentGrade} | Level: ${currentLevel}`;
-          switchPhase("phase3");
         } catch (e) {
-          console.error("Calculation Error:", e);
-          alert("Error calculating level.");
-          document.getElementById("levelBadge").innerText =
-            `${currentGrade} | Level: Intermediate`;
-          switchPhase("phase3");
+          currentLevel = "Intermediate";
         }
+
+        document.getElementById("levelBadge").innerText =
+          `${currentChapter} | Level: ${currentLevel}`;
+        switchPhase("phase3");
       }
 
-      // --- PHASE 3: DYNAMIC FLASHCARDS & RAG ---
-      // More robust cleaner to guarantee asterisks turn into strong tags and remove stray markers
+      // --- AI RAG FETCH ---
       const clean = (text) =>
         text
           ? text
@@ -731,34 +742,31 @@
         document.getElementById("answerSection").style.display = "none";
 
         try {
+          // Passes the new subject and chapter parameters
           const response = await fetch(
-            `${API_URL}/ask?user_query=${encodeURIComponent(input)}&student_level=${currentLevel}`,
+            `${API_URL}/ask?user_query=${encodeURIComponent(input)}&student_level=${currentLevel}&subject=${encodeURIComponent(currentSubject)}&chapter=${encodeURIComponent(currentChapter)}`,
           );
           const data = await response.json();
 
           buildDynamicSteps(data);
-          incrementTopicCount(); // ADHD-OPTIMIZATION: Track learned topics
+          incrementTopicCount();
 
           document.getElementById("loader").style.display = "none";
           document.getElementById("answerSection").style.display = "block";
           showStep(0);
         } catch (e) {
-          console.error("AI Gen Error:", e);
-          alert(
-            "PRISM is having trouble connecting to the knowledge base or parsing the AI response. Check the backend terminal.",
-          );
           document.getElementById("loader").style.display = "none";
         }
       }
 
+      // --- DOM BUILDER ---
       function buildDynamicSteps(data) {
         dynamicStepsData = [];
         currentQuiz = data.quiz;
         const title = data.title ? data.title.replace(/\*+/g, "") : "Concept";
 
-        // 1. Flashcards with up to 3 bullet points each
         if (Array.isArray(data.flashcards) && data.flashcards.length > 0) {
-          data.flashcards.slice(0, 2).forEach((card, idx) => {
+          data.flashcards.slice(0, 3).forEach((card, idx) => {
             const bullets = Array.isArray(card.bullet_points)
               ? card.bullet_points.slice(0, 3)
               : [];
@@ -776,17 +784,8 @@
               icon: "fa-brain",
             });
           });
-        } else if (data.flashcard_content) {
-          dynamicStepsData.push({
-            type: "knowledge",
-            title: title,
-            content: clean(data.flashcard_content),
-            rawText: data.flashcard_content,
-            icon: "fa-brain",
-          });
         }
 
-        // 2. Visual Card (Inserted right after Part 1)
         if (
           data.visual &&
           data.visual.objects &&
@@ -800,9 +799,6 @@
           });
         }
 
-        // 3. Remaining Knowledge Cards - REMOVED since now single content
-
-        // 4. Analogy Card
         if (data.analogy) {
           dynamicStepsData.push({
             type: "analogy",
@@ -813,7 +809,6 @@
           });
         }
 
-        // 5. Quiz Card
         if (data.quiz) {
           dynamicStepsData.push({
             type: "quiz",
@@ -822,7 +817,6 @@
           });
         }
 
-        // 6. Revision Card
         if (data.key_points && data.key_points.length > 0) {
           let listHtml = '<ul class="key-points-list">';
           data.key_points.forEach(
@@ -833,12 +827,11 @@
             type: "revision",
             title: "📌 Quick Revision",
             content: listHtml,
-            rawText: data.key_points.join(" "), // <-- ADD THIS LINE
+            rawText: data.key_points.join(" "),
             icon: "fa-star",
           });
         }
 
-        // Generate dots
         const dotsContainer = document.getElementById("progressDots");
         dotsContainer.innerHTML = dynamicStepsData
           .map(() => `<span class="dot"></span>`)
@@ -848,9 +841,7 @@
       // --- SVG DIAGRAM GENERATOR ---
       function renderDiagram(visualData) {
         if (!visualData) return "";
-
-        let svg = `
-                <div class="svg-container" style="max-width: 450px; margin: 0 auto; background: white;">
+        let svg = `<div class="svg-container" style="max-width: 450px; margin: 0 auto; background: white;">
                 <svg viewBox="0 0 450 450" style="width:100%; display:block; font-family: 'Nunito', sans-serif;">
                     <defs>
                         <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
@@ -858,78 +849,46 @@
                         </marker>
                     </defs>`;
 
-        // Render standard objects
         (visualData.objects || []).forEach((obj) => {
           svg += `<g id="svg-${obj.id}" class="diagram-element">`;
-
           let rectWidth = obj.width || 140;
           let rectHeight = obj.height || 50;
-
           if (obj.shape === "rect") {
             svg += `<rect x="${obj.x}" y="${obj.y}" width="${rectWidth}" height="${rectHeight}" fill="#F8FAFC" stroke="var(--text-dark)" stroke-width="2.5" rx="8"/>`;
           } else if (obj.shape === "circle") {
             svg += `<circle cx="${obj.x}" cy="${obj.y}" r="${obj.r || 30}" fill="#F8FAFC" stroke="var(--text-dark)" stroke-width="2.5"/>`;
-          } else if (obj.shape === "line") {
-            svg += `<line x1="${obj.x1}" y1="${obj.y1}" x2="${obj.x2}" y2="${obj.y2}" stroke="var(--text-dark)" stroke-width="2.5"/>`;
           }
-
-          // Perfect Text Centering using dominant-baseline
           if (obj.label) {
-            let lx, ly;
-            if (obj.shape === "rect") {
-              lx = obj.x + rectWidth / 2;
-              ly = obj.y + rectHeight / 2;
-            } else if (obj.shape === "circle") {
-              lx = obj.x;
-              ly = obj.y;
-            } else {
-              lx = (obj.x1 + obj.x2) / 2;
-              ly = (obj.y1 + obj.y2) / 2 - 10;
-            }
+            let lx = obj.shape === "rect" ? obj.x + rectWidth / 2 : obj.x;
+            let ly = obj.shape === "rect" ? obj.y + rectHeight / 2 : obj.y;
             svg += `<text x="${lx}" y="${ly}" font-size="14" fill="var(--text-dark)" text-anchor="middle" dominant-baseline="middle" font-weight="700">${obj.label}</text>`;
           }
           svg += `</g>`;
         });
 
-        // Render motion arrows
         (visualData.arrows || []).forEach((arr) => {
           let isVertical = Math.abs(arr.from[0] - arr.to[0]) < 20;
           let motionClass = isVertical ? "arrow-motion-y" : "arrow-motion-x";
-
           svg += `<g id="svg-${arr.id}" class="diagram-element ${motionClass}">`;
           svg += `<line x1="${arr.from[0]}" y1="${arr.from[1]}" x2="${arr.to[0]}" y2="${arr.to[1]}" stroke="var(--primary-blue)" stroke-width="3" marker-end="url(#arrow)"/>`;
-
           if (arr.label) {
-            let lx = (arr.from[0] + arr.to[0]) / 2;
-            let ly = (arr.from[1] + arr.to[1]) / 2;
-
-            // Nudge text aside if it's a vertical drop arrow so it doesn't cross the line
-            if (isVertical) {
-              lx += 30;
-            } else {
-              ly -= 12; // Nudge up for horizontal arrows
-            }
-
+            let lx = (arr.from[0] + arr.to[0]) / 2 + (isVertical ? 30 : 0);
+            let ly = (arr.from[1] + arr.to[1]) / 2 - (isVertical ? 0 : 12);
             svg += `<text x="${lx}" y="${ly}" font-size="12" fill="var(--primary-blue)" text-anchor="middle" dominant-baseline="middle" font-weight="700">${arr.label}</text>`;
           }
           svg += `</g>`;
         });
-
         svg += `</svg></div>`;
         return svg;
       }
 
-      // --- SVG ANIMATION ENGINE ---
       function animateDiagram(animationSteps) {
         animationTimers.forEach(clearTimeout);
         animationTimers = [];
-
         if (!animationSteps || !Array.isArray(animationSteps)) return;
-
         document
           .querySelectorAll(".diagram-element")
           .forEach((el) => (el.style.opacity = "0"));
-
         animationSteps.forEach((step, index) => {
           let timer = setTimeout(
             () => {
@@ -944,13 +903,11 @@
 
       function showStep(index) {
         if (index < 0 || index >= dynamicStepsData.length) return;
-
         window.speechSynthesis.cancel();
         currentStepIndex = index;
         const stepData = dynamicStepsData[index];
 
-        const allDots = document.querySelectorAll("#progressDots .dot");
-        allDots.forEach((dot, i) => {
+        document.querySelectorAll("#progressDots .dot").forEach((dot, i) => {
           dot.classList.toggle("active", i <= index);
         });
 
@@ -964,47 +921,43 @@
         ) {
           let audioHTML = stepData.rawText
             ? `<div class="audio-controls">
-                        <i class="fas fa-volume-up speaker-icon" id="audio-play-${index}" onclick="toggleAudio('audio-text-${index}', ${index})" title="Play/Pause"></i>
-                        <i class="fas fa-undo speaker-icon" onclick="restartAudio('audio-text-${index}', ${index})" title="Restart" style="margin-left:10px; font-size: 1rem;"></i>
-                     </div>`
+                <i class="fas fa-volume-up speaker-icon" id="audio-play-${index}" onclick="toggleAudio('audio-text-${index}', ${index})" title="Play/Pause"></i>
+                <i class="fas fa-undo speaker-icon" onclick="restartAudio('audio-text-${index}', ${index})" title="Restart" style="margin-left:10px; font-size: 1rem;"></i>
+               </div>`
             : "";
 
           innerContent = `
-                    <span class="step-indicator">Step ${index + 1} of ${dynamicStepsData.length}</span>
-                    <div class="visual-icon"><i class="fas ${stepData.icon}"></i></div>
-                    <h3 class="mb-3 d-flex align-items-center justify-content-between">
-                        <span>${stepData.title}</span> ${audioHTML}
-                    </h3>
-                    <p class="content-text" id="audio-text-${index}">${stepData.content}</p>
-                `;
+            <span class="step-indicator">Step ${index + 1} of ${dynamicStepsData.length}</span>
+            <div class="visual-icon"><i class="fas ${stepData.icon}"></i></div>
+            <h3 class="mb-3 d-flex align-items-center justify-content-between">
+                <span>${stepData.title}</span> ${audioHTML}
+            </h3>
+            <p class="content-text" id="audio-text-${index}">${stepData.content}</p>`;
         } else if (stepData.type === "visual") {
           innerContent = `
-                    <span class="step-indicator">Step ${index + 1} of ${dynamicStepsData.length}</span>
-                    <div class="visual-icon"><i class="fas ${stepData.icon}"></i></div>
-                    <h3 class="mb-3 text-center">${stepData.title}</h3>
-                    ${renderDiagram(stepData.visualData)}
-                `;
+            <span class="step-indicator">Step ${index + 1} of ${dynamicStepsData.length}</span>
+            <div class="visual-icon"><i class="fas ${stepData.icon}"></i></div>
+            <h3 class="mb-3 text-center">${stepData.title}</h3>
+            ${renderDiagram(stepData.visualData)}`;
           setTimeout(
             () => animateDiagram(stepData.visualData.animation_steps),
             50,
           );
         } else if (stepData.type === "quiz") {
           innerContent = `
-                    <span class="step-indicator">Step ${index + 1} of ${dynamicStepsData.length}</span>
-                    <h3 class="mb-4">${currentQuiz.question}</h3>
-                    <div id="mcqOptions" class="d-flex flex-column gap-3">
-                        ${currentQuiz.options
-                          .map((opt, idx) => {
-                            const cleanOpt = opt.replace(/^[A-D][\.\)]\s*/, "");
-                            return `<button class="btn mcq-btn" onclick="checkAnswer(this, \`${opt.replace(/`/g, "'")}\`)"><strong>${["A", "B", "C", "D"][idx]}.</strong> ${clean(cleanOpt)}</button>`;
-                          })
-                          .join("")}
-                    </div>
-                    <div id="mcqMessage" class="mt-4 p-3 rounded" style="display: none; font-weight: 600;"></div>
-                `;
+            <span class="step-indicator">Step ${index + 1} of ${dynamicStepsData.length}</span>
+            <h3 class="mb-4">${currentQuiz.question}</h3>
+            <div id="mcqOptions" class="d-flex flex-column gap-3">
+                ${currentQuiz.options
+                  .map((opt, idx) => {
+                    const cleanOpt = opt.replace(/^[A-D][\.\)]\s*/, "");
+                    return `<button class="btn mcq-btn" onclick="checkAnswer(this, \`${opt.replace(/`/g, "'")}\`)"><strong>${["A", "B", "C", "D"][idx]}.</strong> ${clean(cleanOpt)}</button>`;
+                  })
+                  .join("")}
+            </div>
+            <div id="mcqMessage" class="mt-4 p-3 rounded" style="display: none; font-weight: 600;"></div>`;
         }
 
-        // Nav Buttons
         let navHTML = `<div class="step-nav mt-4 pt-4 border-top">`;
         if (index > 0)
           navHTML += `<button class="btn btn-nav" onclick="showStep(${index - 1})">← Previous</button>`;
@@ -1020,65 +973,48 @@
         cardContainer.innerHTML = innerContent + navHTML;
         cardContainer.classList.add("active-step");
       }
-      // ===============================
-      // PRISM SIMPLE AUDIO ENGINE
-      // ===============================
 
+      // --- PRISM AUDIO ENGINE ---
       let prismUtterance = null;
       let prismSpeakingIndex = -1;
 
-      // Wrap words for highlighting
       function wrapWords(el, prefix) {
         if (el.dataset.wrapped === "true") return;
-
         let words = el.innerText.split(/\s+/);
-
         el.innerHTML = words
           .map(
             (word, i) =>
               `<span id="${prefix}-w${i}" class="tts-word">${word}</span>`,
           )
           .join(" ");
-
         el.dataset.wrapped = "true";
       }
 
-      // Start speaking
       function playAudio(elementId, index) {
         const textEl = document.getElementById(elementId);
         const playBtn = document.getElementById(`audio-play-${index}`);
-
         if (!textEl) return;
 
-        // Extract text BEFORE wrapping
         const text = textEl.innerText.trim();
         if (!text) return;
 
-        // Wrap words for highlighting
         wrapWords(textEl, elementId);
-
-        // Stop previous speech
         speechSynthesis.cancel();
 
         prismUtterance = new SpeechSynthesisUtterance(text);
         prismUtterance.rate = 0.9;
-
         prismSpeakingIndex = index;
 
         if (playBtn) playBtn.className = "fas fa-pause speaker-icon";
 
         prismUtterance.onboundary = (event) => {
           if (event.name !== "word") return;
-
           const words = text.substring(0, event.charIndex).trim().split(/\s+/);
           const wordIndex = words.length - 1;
-
           document
             .querySelectorAll(`#${elementId} .tts-word`)
             .forEach((w) => w.classList.remove("tts-active"));
-
           const span = document.getElementById(`${elementId}-w${wordIndex}`);
-
           if (span) span.classList.add("tts-active");
         };
 
@@ -1086,33 +1022,27 @@
           document
             .querySelectorAll(`#${elementId} .tts-word`)
             .forEach((w) => w.classList.remove("tts-active"));
-
           if (playBtn) playBtn.className = "fas fa-volume-up speaker-icon";
-
           prismSpeakingIndex = -1;
         };
-
         speechSynthesis.speak(prismUtterance);
       }
 
-      // Toggle play/pause
       function toggleAudio(elementId, index) {
         const playBtn = document.getElementById(`audio-play-${index}`);
-
         if (prismSpeakingIndex === index) {
           if (speechSynthesis.paused) {
             speechSynthesis.resume();
             if (playBtn) playBtn.className = "fas fa-pause speaker-icon";
           } else if (speechSynthesis.speaking) {
             speechSynthesis.pause();
-            if (playBtn) playBtn.className = "fas fa-volume-up speaker-icon";
+            if (playBtn) playBtn.className = "fas fa-play speaker-icon";
           }
         } else {
           playAudio(elementId, index);
         }
       }
-      
-      // Restart audio
+
       function restartAudio(elementId, index) {
         speechSynthesis.cancel();
         playAudio(elementId, index);
@@ -1120,8 +1050,7 @@
 
       // --- MCQ VERIFICATION ---
       function celebrateCorrectAnswer(btn) {
-        // ADHD DOPAMINE BOOST: Animated celebration emojis
-        const emojis = ["🎉", "✨", "🎊", "🧠", "⭐", "🚀", "💡"];
+        const emojis = ["🎉", "✨", "🎊", "🧠", "⭐"];
         for (let i = 0; i < 5; i++) {
           const emoji = document.createElement("div");
           emoji.innerText = emojis[Math.floor(Math.random() * emojis.length)];
@@ -1134,12 +1063,8 @@
           document.body.appendChild(emoji);
           setTimeout(() => emoji.remove(), 2000);
         }
-
-        // Play celebratory sound (optional, browser must allow)
-        // For this implementation, we'll just use visual feedback
       }
 
-      // --- MCQ VERIFICATION ---
       function checkAnswer(btn, selectedStr) {
         if (!currentQuiz) return;
         const msgBox = document.getElementById("mcqMessage");
@@ -1150,19 +1075,15 @@
         allBtns.forEach((b) => (b.disabled = true));
         msgBox.style.display = "block";
 
-        // Clean the strings by removing potential markdown
         const cleanSelected = clean(
           selectedStr.replace(/^[A-D][\.\)]\s*/, "").trim(),
         );
         const cleanCorrectText = clean(
           currentQuiz.correct.replace(/^[A-D][\.\)]\s*/, "").trim(),
         );
-
-        // Determine the letter (A, B, C, D) of the clicked button
         const selectedIndex = Array.from(allBtns).indexOf(btn);
         const selectedLetter = ["A", "B", "C", "D"][selectedIndex];
 
-        // SMART MATCHING: Checks if the exact text matches OR if the AI just returned the letter (A/B/C/D)
         const isCorrect =
           cleanSelected === cleanCorrectText ||
           currentQuiz.correct.includes(cleanSelected) ||
@@ -1173,23 +1094,17 @@
           btn.style.backgroundColor = "var(--correct-bg)";
           msgBox.style.color = "#1e5c3a";
           msgBox.style.backgroundColor = "#eef8f1";
-          // ADHD-OPTIMIZED: Growth mindset + dopamine boost
-          msgBox.innerHTML = `<strong>🎉 YES! AMAZING!</strong> <br><br>You just grew your brain—literally! Neurons firing = learning happening! 🧠 <br><br><em>${clean(currentQuiz.explanation)}</em>`;
-
-          // CELEBRATION: Dopamine trigger—visual celebration
+          msgBox.innerHTML = `<strong>🎉 YES! AMAZING!</strong> <br><br>You just grew your brain! 🧠 <br><br><em>${clean(currentQuiz.explanation)}</em>`;
           celebrateCorrectAnswer(btn);
           incrementQuestionCount();
         } else {
           btn.style.borderColor = "#e9a1a8";
           btn.style.backgroundColor = "var(--wrong-bg)";
-
-          // Highlight the actual correct option in green
           allBtns.forEach((b, idx) => {
             const btnLetter = ["A", "B", "C", "D"][idx];
             const cleanBtnText = clean(
               b.innerText.replace(/^[A-D][\.\)]\s*/, "").trim(),
             );
-
             if (
               cleanBtnText.includes(cleanCorrectText) ||
               currentQuiz.correct.trim().toUpperCase() === btnLetter
@@ -1200,8 +1115,7 @@
           });
           msgBox.style.color = "#7a1c24";
           msgBox.style.backgroundColor = "#fdecec";
-          // ADHD-OPTIMIZED: Encouragement + explanation
-          msgBox.innerHTML = `<strong>💡 Great Effort!</strong> <br><br>Your brain is building. Every attempt is progress! Here's the right answer: <br><br><em>${clean(currentQuiz.explanation)}</em> <br><br><small>Tip: Next time, focus on this part.</small>`;
+          msgBox.innerHTML = `<strong>💡 Great Effort!</strong> <br><br>Here's the right answer: <br><br><em>${clean(currentQuiz.explanation)}</em>`;
         }
       }
     </script>
