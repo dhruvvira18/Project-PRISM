@@ -362,40 +362,19 @@
         box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
       }
 
-      /* --- Diagram & SVG Animations --- */
-      .diagram-element {
-        opacity: 0;
-        transition: opacity 0.5s ease-in-out;
+      /* --- Mermaid Diagram Styling --- */
+      .mermaid-wrapper {
+        display: flex;
+        justify-content: center;
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin: 20px 0;
+        overflow-x: auto;
       }
-
-      .arrow-motion-x {
-        animation: arrowMoveX 1.5s infinite alternate ease-in-out;
-      }
-      .arrow-motion-y {
-        animation: arrowMoveY 1.5s infinite alternate ease-in-out;
-      }
-
-      @keyframes arrowMoveX {
-        from {
-          transform: translateX(0px);
-        }
-        to {
-          transform: translateX(5px);
-        }
-      }
-      @keyframes arrowMoveY {
-        from {
-          transform: translateY(0px);
-        }
-        to {
-          transform: translateY(5px);
-        }
-      }
-
-      .svg-container {
-        border: 2px dashed #e2e8f0;
-        border-radius: 16px;
-        padding: 1rem;
+      .mermaid svg {
+        max-width: 100%;
+        height: auto;
       }
 
       @keyframes float-up {
@@ -409,6 +388,14 @@
         }
       }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({ 
+        startOnLoad: false, 
+        theme: 'base',
+        flowchart: { useMaxWidth: true, curve: 'linear' }
+      });
+    </script>
   </head>
   <body>
     <div class="site-logo">PRISM</div>
@@ -564,8 +551,20 @@
         if (phaseId === "phase3" && !sessionStartTime) startSessionTimer();
       }
 
+      // --- TTS INITIALIZATION ---
+      function initializeTTS() {
+        if (!window.speechSynthesis) return false;
+        // Preload voices
+        speechSynthesis.getVoices();
+        speechSynthesis.onvoiceschanged = () => {
+          speechSynthesis.getVoices();
+        };
+        return true;
+      }
+
       // --- INITIALIZATION ---
       window.onload = async () => {
+        initializeTTS();
         try {
           const res = await fetch(`${API_URL}/grades`);
           const data = await res.json();
@@ -588,9 +587,7 @@
         currentGrade = grade;
         switchPhase("phase1b");
         try {
-          const res = await fetch(
-            `${API_URL}/subjects?grade=${encodeURIComponent(grade)}`,
-          );
+          const res = await fetch(`${API_URL}/subjects?grade=${encodeURIComponent(grade)}`);
           const data = await res.json();
           const container = document.getElementById("subjectButtons");
           container.innerHTML = "";
@@ -601,25 +598,20 @@
             btn.onclick = () => loadChapters(sub); 
             container.appendChild(btn);
           });
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e) { console.error(e); }
       }
 
       async function loadChapters(subject) {
         currentSubject = subject;
         switchPhase("phase1c");
         try {
-          const res = await fetch(
-            `${API_URL}/chapters?grade=${encodeURIComponent(currentGrade)}&subject=${encodeURIComponent(subject)}`,
-          );
+          const res = await fetch(`${API_URL}/chapters?grade=${encodeURIComponent(currentGrade)}&subject=${encodeURIComponent(subject)}`);
           const data = await res.json();
           const container = document.getElementById("chapterButtons");
           container.innerHTML = "";
 
           if (data.chapters.length === 0) {
-            container.innerHTML =
-              "<p class='text-muted'>No chapters found in Supabase.</p>";
+            container.innerHTML = "<p class='text-muted'>No chapters found in Supabase.</p>";
             return;
           }
 
@@ -633,9 +625,7 @@
             };
             container.appendChild(btn);
           });
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e) { console.error(e); }
       }
 
       // --- LEVEL TEST ---
@@ -644,9 +634,7 @@
         levelTestSelections = {};
         currentTestIndex = 0;
         try {
-          const res = await fetch(
-            `${API_URL}/level-test?subject=${encodeURIComponent(subject)}`,
-          );
+          const res = await fetch(`${API_URL}/level-test?subject=${encodeURIComponent(subject)}`);
           const data = await res.json();
           levelTestQuestions = data.questions;
 
@@ -655,9 +643,7 @@
             return;
           }
           renderTestQuestion();
-        } catch (e) {
-          submitLevelTest();
-        }
+        } catch (e) { submitLevelTest(); }
       }
 
       function renderTestQuestion() {
@@ -669,15 +655,13 @@
         }
 
         const q = levelTestQuestions[currentTestIndex];
-        document.getElementById("testProgress").innerText =
-          `Question ${currentTestIndex + 1} / ${levelTestQuestions.length}`;
+        document.getElementById("testProgress").innerText = `Question ${currentTestIndex + 1} / ${levelTestQuestions.length}`;
 
         const block = document.createElement("div");
         block.className = "level-q-container";
         block.innerHTML = `<h4 class="mb-4">${q.question}</h4>`;
 
-        const options =
-          typeof q.options === "string" ? JSON.parse(q.options) : q.options;
+        const options = typeof q.options === "string" ? JSON.parse(q.options) : q.options;
         const shuffledOptions = [...options].sort(() => Math.random() - 0.5);
 
         shuffledOptions.forEach((opt) => {
@@ -707,33 +691,22 @@
           });
           const data = await res.json();
           currentLevel = data.level || "Intermediate";
-        } catch (e) {
-          currentLevel = "Intermediate";
-        }
+        } catch (e) { currentLevel = "Intermediate"; }
 
-        document.getElementById("levelBadge").innerText =
-          `${currentChapter} | Level: ${currentLevel}`;
+        document.getElementById("levelBadge").innerText = `${currentChapter} | Level: ${currentLevel}`;
         switchPhase("phase3");
       }
 
       // --- AI RAG FETCH ---
-      const clean = (text) =>
-        text
-          ? text
-              .replace(/\*\*\s*(.*?)\s*\*\*/g, "<strong>$1</strong>")
-              .replace(/\*+/g, "")
-          : "";
+      const clean = (text) => text ? text.replace(/\*\*\s*(.*?)\s*\*\*/g, "<strong>$1</strong>").replace(/\*+/g, "") : "";
 
-      document
-        .getElementById("questionInput")
-        .addEventListener("keypress", function (event) {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            generateAnswer();
-          }
-        });
+      document.getElementById("questionInput").addEventListener("keypress", function (event) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          generateAnswer();
+        }
+      });
 
-      // FIXED: The generateAnswer function is fully integrated here
       async function generateAnswer() {
         const input = document.getElementById("questionInput").value.trim();
         if (!input) return;
@@ -762,34 +735,25 @@
       function buildDynamicSteps(data) {
         dynamicStepsData = [];
         currentQuiz = data.quiz;
-        const title = data.title ? data.title.replace(/\*+/g, "") : "Concept";
 
         if (Array.isArray(data.flashcards) && data.flashcards.length > 0) {
           data.flashcards.slice(0, 3).forEach((card, idx) => {
-            const bullets = Array.isArray(card.bullet_points)
-              ? card.bullet_points.slice(0, 3)
-              : [];
+            const bullets = Array.isArray(card.bullet_points) ? card.bullet_points.slice(0, 3) : [];
             let listHtml = '<ul class="key-points-list">';
-            bullets.forEach((point) => {
-              listHtml += `<li>${clean(point)}</li>`;
-            });
+            bullets.forEach((point) => { listHtml += `<li>${clean(point)}</li>`; });
             listHtml += "</ul>";
 
             dynamicStepsData.push({
               type: "knowledge",
               title: card.title || `Flashcard ${idx + 1}`,
               content: listHtml,
-              rawText: bullets.join(" "),
+              rawText: bullets.join(". "), // Used for flawless Audio processing
               icon: "fa-brain",
             });
           });
         }
 
-        if (
-          data.visual &&
-          data.visual.objects &&
-          data.visual.objects.length > 0
-        ) {
+        if (data.visual && data.visual.mermaid) {
           dynamicStepsData.push({
             type: "visual",
             title: "Visual Blueprint",
@@ -818,94 +782,60 @@
 
         if (data.key_points && data.key_points.length > 0) {
           let listHtml = '<ul class="key-points-list">';
-          data.key_points.forEach(
-            (kp) => (listHtml += `<li>${clean(kp)}</li>`),
-          );
+          data.key_points.forEach((kp) => (listHtml += `<li>${clean(kp)}</li>`));
           listHtml += "</ul>";
           dynamicStepsData.push({
             type: "revision",
             title: "📌 Quick Revision",
             content: listHtml,
-            rawText: data.key_points.join(" "),
+            rawText: data.key_points.join(". "),
             icon: "fa-star",
           });
         }
 
         const dotsContainer = document.getElementById("progressDots");
-        dotsContainer.innerHTML = dynamicStepsData
-          .map(() => `<span class="dot"></span>`)
-          .join("");
+        dotsContainer.innerHTML = dynamicStepsData.map(() => `<span class="dot"></span>`).join("");
       }
 
-      // --- SVG DIAGRAM GENERATOR ---
+      // --- MERMAID DIAGRAM GENERATOR ---
       function renderDiagram(visualData) {
-        if (!visualData) return "";
-        let svg = `<div class="svg-container" style="max-width: 450px; margin: 0 auto; background: white;">
-                <svg viewBox="0 0 450 450" style="width:100%; display:block; font-family: 'Nunito', sans-serif;">
-                    <defs>
-                        <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-                            <path d="M0,0 L6,3 L0,6 Z" fill="var(--primary-blue)"/>
-                        </marker>
-                    </defs>`;
+        if (!visualData || !visualData.mermaid) return "";
+        
+        const code = visualData.mermaid.trim();
+        const diagramId = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Guardrail: If LLM hallucinates standard text instead of Mermaid Code (graph, flowchart, pie, etc.)
+        const isMermaid = /^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|pie|gantt|journey)/i.test(code);
+        
+        if (!isMermaid) {
+            return `<div class="p-4 bg-light border rounded text-center text-muted" style="border-radius: 12px; margin: 20px 0;">
+                      <i class="fas fa-sitemap mb-2" style="font-size: 2rem; color: var(--primary-blue)"></i>
+                      <p class="mb-0"><strong>Visual Concept:</strong><br>${code}</p>
+                    </div>`;
+        }
 
-        (visualData.objects || []).forEach((obj) => {
-          svg += `<g id="svg-${obj.id}" class="diagram-element">`;
-          let rectWidth = obj.width || 140;
-          let rectHeight = obj.height || 50;
-          let x = obj.x || 0;
-          let y = obj.y || 0;
-          if (obj.shape === "rect") {
-            svg += `<rect x="${x}" y="${y}" width="${rectWidth}" height="${rectHeight}" fill="#F8FAFC" stroke="var(--text-dark)" stroke-width="2.5" rx="8"/>`;
-          } else if (obj.shape === "circle") {
-            let cx = obj.x || 0;
-            let cy = obj.y || 0;
-            svg += `<circle cx="${cx}" cy="${cy}" r="${obj.r || 30}" fill="#F8FAFC" stroke="var(--text-dark)" stroke-width="2.5"/>`;
-          }
-          if (obj.label) {
-            let lx = obj.shape === "rect" ? x + rectWidth / 2 : (obj.x || 0);
-            let ly = obj.shape === "rect" ? y + rectHeight / 2 : (obj.y || 0);
-            svg += `<text x="${lx}" y="${ly}" font-size="14" fill="var(--text-dark)" text-anchor="middle" dominant-baseline="middle" font-weight="700">${obj.label}</text>`;
-          }
-          svg += `</g>`;
-        });
-
-        (visualData.arrows || []).forEach((arr) => {
-          let isVertical = Math.abs((arr.from ? arr.from[0] : 0) - (arr.to ? arr.to[0] : 0)) < 20;
-          let motionClass = isVertical ? "arrow-motion-y" : "arrow-motion-x";
-          svg += `<g id="svg-${arr.id}" class="diagram-element ${motionClass}">`;
-          let fromX = arr.from ? arr.from[0] : 0;
-          let fromY = arr.from ? arr.from[1] : 0;
-          let toX = arr.to ? arr.to[0] : 0;
-          let toY = arr.to ? arr.to[1] : 0;
-          svg += `<line x1="${fromX}" y1="${fromY}" x2="${toX}" y2="${toY}" stroke="var(--primary-blue)" stroke-width="3" marker-end="url(#arrow)"/>`;
-          if (arr.label) {
-            let lx = (fromX + toX) / 2 + (isVertical ? 30 : 0);
-            let ly = (fromY + toY) / 2 - (isVertical ? 0 : 12);
-            svg += `<text x="${lx}" y="${ly}" font-size="12" fill="var(--primary-blue)" text-anchor="middle" dominant-baseline="middle" font-weight="700">${arr.label}</text>`;
-          }
-          svg += `</g>`;
-        });
-        svg += `</svg></div>`;
-        return svg;
+        return `<div class="mermaid-wrapper">
+                  <div id="${diagramId}" class="mermaid">${code}</div>
+                </div>`;
       }
 
-      function animateDiagram(animationSteps) {
-        animationTimers.forEach(clearTimeout);
-        animationTimers = [];
-        if (!animationSteps || !Array.isArray(animationSteps)) return;
-        document
-          .querySelectorAll(".diagram-element")
-          .forEach((el) => (el.style.opacity = "0"));
-        animationSteps.forEach((step, index) => {
-          let timer = setTimeout(
-            () => {
-              let el = document.getElementById(`svg-${step.show}`);
-              if (el) el.style.opacity = "1";
-            },
-            index * 800 + 400,
-          );
-          animationTimers.push(timer);
-        });
+      async function renderMermaidDiagrams() {
+        if (typeof mermaid !== 'undefined') {
+          const elements = document.querySelectorAll('.mermaid:not([data-processed="true"])');
+          if (elements.length === 0) return;
+          
+          try {
+            // Fix: Mermaid v10 requires async `mermaid.run()`
+            await mermaid.run({ nodes: elements });
+            elements.forEach(el => el.setAttribute('data-processed', 'true'));
+          } catch (e) {
+            console.error("Mermaid syntax error from LLM:", e);
+            elements.forEach(el => {
+              el.innerHTML = `<div class="text-danger p-3 border rounded text-center"><i class="fas fa-exclamation-triangle"></i> Failed to render diagram.</div>`;
+              el.setAttribute('data-processed', 'true');
+            });
+          }
+        }
       }
 
       function showStep(index) {
@@ -921,15 +851,17 @@
         const cardContainer = document.getElementById("dynamicCardContainer");
         let innerContent = "";
 
-        if (
-          stepData.type === "knowledge" ||
-          stepData.type === "analogy" ||
-          stepData.type === "revision"
-        ) {
+        if (stepData.type === "knowledge" || stepData.type === "analogy" || stepData.type === "revision") {
           let audioHTML = stepData.rawText
             ? `<div class="audio-controls">
                 <i class="fas fa-volume-up speaker-icon" id="audio-play-${index}" onclick="toggleAudio('audio-text-${index}', ${index})" title="Play/Pause"></i>
                 <i class="fas fa-undo speaker-icon" onclick="restartAudio('audio-text-${index}', ${index})" title="Restart" style="margin-left:10px; font-size: 1rem;"></i>
+                <select class="speed-select" onchange="updateSpeechRate(this.value)" title="Speech Speed" style="margin-left:10px; font-size: 0.8rem; border-radius: 8px; border: 1px solid #ccc;">
+                  <option value="0.7">0.7x</option>
+                  <option value="0.9" selected>0.9x</option>
+                  <option value="1.0">1.0x</option>
+                  <option value="1.2">1.2x</option>
+                </select>
                </div>`
             : "";
 
@@ -939,35 +871,28 @@
             <h3 class="mb-3 d-flex align-items-center justify-content-between">
                 <span>${stepData.title}</span> ${audioHTML}
             </h3>
-            <p class="content-text" id="audio-text-${index}">${stepData.content}</p>`;
+            <div class="content-text" id="audio-text-${index}">${stepData.content}</div>`;
         } else if (stepData.type === "visual") {
           innerContent = `
             <span class="step-indicator">Step ${index + 1} of ${dynamicStepsData.length}</span>
             <div class="visual-icon"><i class="fas ${stepData.icon}"></i></div>
             <h3 class="mb-3 text-center">${stepData.title}</h3>
             ${renderDiagram(stepData.visualData)}`;
-          setTimeout(
-            () => animateDiagram(stepData.visualData.animation_steps),
-            50,
-          );
         } else if (stepData.type === "quiz") {
           innerContent = `
             <span class="step-indicator">Step ${index + 1} of ${dynamicStepsData.length}</span>
             <h3 class="mb-4">${currentQuiz.question}</h3>
             <div id="mcqOptions" class="d-flex flex-column gap-3">
-                ${currentQuiz.options
-                  .map((opt, idx) => {
+                ${currentQuiz.options.map((opt, idx) => {
                     const cleanOpt = opt.replace(/^[A-D][\.\)]\s*/, "");
                     return `<button class="btn mcq-btn" onclick="checkAnswer(this, \`${opt.replace(/`/g, "'")}\`)"><strong>${["A", "B", "C", "D"][idx]}.</strong> ${clean(cleanOpt)}</button>`;
-                  })
-                  .join("")}
+                  }).join("")}
             </div>
             <div id="mcqMessage" class="mt-4 p-3 rounded" style="display: none; font-weight: 600;"></div>`;
         }
 
         let navHTML = `<div class="step-nav mt-4 pt-4 border-top">`;
-        if (index > 0)
-          navHTML += `<button class="btn btn-nav" onclick="showStep(${index - 1})">← Previous</button>`;
+        if (index > 0) navHTML += `<button class="btn btn-nav" onclick="showStep(${index - 1})">← Previous</button>`;
         else navHTML += `<div></div>`;
 
         if (index < dynamicStepsData.length - 1) {
@@ -979,79 +904,98 @@
 
         cardContainer.innerHTML = innerContent + navHTML;
         cardContainer.classList.add("active-step");
+        
+        // Trigger Mermaid rendering safely
+        setTimeout(renderMermaidDiagrams, 50);
       }
 
       // --- PRISM AUDIO ENGINE ---
       let prismUtterance = null;
       let prismSpeakingIndex = -1;
+      let speechRate = 0.9;
 
       function wrapWords(el, prefix) {
         if (el.dataset.wrapped === "true") return;
+        // Fix: Do not destroy HTML structures (like ul/li) by splitting innerText.
+        // Skip word wrapping if the element contains complex nested HTML to prevent bugs.
+        if (el.querySelector('ul') || el.querySelector('li') || el.querySelector('div')) {
+           return; 
+        }
         let words = el.innerText.split(/\s+/);
-        el.innerHTML = words
-          .map(
-            (word, i) =>
-              `<span id="${prefix}-w${i}" class="tts-word">${word}</span>`,
-          )
-          .join(" ");
+        el.innerHTML = words.map((word, i) => `<span id="${prefix}-w${i}" class="tts-word">${word}</span>`).join(" ");
         el.dataset.wrapped = "true";
       }
 
       function stripMarkdown(text) {
-        // Remove bold/italic markers: **text**, *text*, __text__, _text_
         text = text.replace(/\*\*(.*?)\*\*/g, '$1');
         text = text.replace(/\*(.*?)\*/g, '$1');
         text = text.replace(/__(.*?)__/g, '$1');
         text = text.replace(/_(.*?)_/g, '$1');
-        // Remove headers: # ## ###
         text = text.replace(/^#+\s*/gm, '');
-        // Remove links: [text](url)
         text = text.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
-        // Remove code blocks: ```code``` and `code`
         text = text.replace(/```[\s\S]*?```/g, '');
         text = text.replace(/`([^`]+)`/g, '$1');
-        // Remove lists: - or * or numbers
         text = text.replace(/^[\s]*[-\*\+] /gm, '');
         text = text.replace(/^[\s]*\d+\. /gm, '');
         return text.trim();
       }
 
       function playAudio(elementId, index) {
-        const textEl = document.getElementById(elementId);
+        if (!window.speechSynthesis) {
+          alert("Text-to-speech is not supported in this browser.");
+          return;
+        }
+        
+        const stepData = dynamicStepsData[index];
         const playBtn = document.getElementById(`audio-play-${index}`);
-        if (!textEl) return;
+        const textEl = document.getElementById(elementId);
 
-        const rawText = textEl.innerText.trim();
-        const text = stripMarkdown(rawText);
-        if (!text) return;
+        // Fix: Rely strictly on clean rawText stored in memory, NOT innerText extraction.
+        let rawText = stepData.rawText || (textEl ? textEl.innerText : "");
+        const text = stripMarkdown(rawText).trim();
+        
+        if (!text || text.length === 0) {
+          alert("No content available for audio playback.");
+          return;
+        }
 
-        wrapWords(textEl, elementId);
+        // Only apply visual word-wraps to simple paragraphs to prevent HTML destruction.
+        if (textEl && !textEl.querySelector('ul, li')) {
+            wrapWords(textEl, elementId);
+        }
+        
         speechSynthesis.cancel();
 
         prismUtterance = new SpeechSynthesisUtterance(text);
-        prismUtterance.rate = 0.9;
+        prismUtterance.rate = speechRate;
         prismSpeakingIndex = index;
 
         if (playBtn) playBtn.className = "fas fa-pause speaker-icon";
 
         prismUtterance.onboundary = (event) => {
           if (event.name !== "word") return;
-          const words = text.substring(0, event.charIndex).trim().split(/\s+/);
-          const wordIndex = words.length - 1;
-          document
-            .querySelectorAll(`#${elementId} .tts-word`)
-            .forEach((w) => w.classList.remove("tts-active"));
-          const span = document.getElementById(`${elementId}-w${wordIndex}`);
-          if (span) span.classList.add("tts-active");
+          if (textEl && textEl.dataset.wrapped === "true") {
+            const words = text.substring(0, event.charIndex).trim().split(/\s+/);
+            const wordIndex = words.length - 1;
+            document.querySelectorAll(`#${elementId} .tts-word`).forEach((w) => w.classList.remove("tts-active"));
+            const span = document.getElementById(`${elementId}-w${wordIndex}`);
+            if (span) span.classList.add("tts-active");
+          }
         };
 
         prismUtterance.onend = () => {
-          document
-            .querySelectorAll(`#${elementId} .tts-word`)
-            .forEach((w) => w.classList.remove("tts-active"));
+          if (textEl) {
+            document.querySelectorAll(`#${elementId} .tts-word`).forEach((w) => w.classList.remove("tts-active"));
+          }
           if (playBtn) playBtn.className = "fas fa-volume-up speaker-icon";
           prismSpeakingIndex = -1;
         };
+
+        prismUtterance.onerror = () => {
+          if (playBtn) playBtn.className = "fas fa-volume-up speaker-icon";
+          prismSpeakingIndex = -1;
+        };
+        
         speechSynthesis.speak(prismUtterance);
       }
 
@@ -1075,6 +1019,10 @@
         playAudio(elementId, index);
       }
 
+      function updateSpeechRate(rate) {
+        speechRate = parseFloat(rate);
+      }
+
       // --- MCQ VERIFICATION ---
       function celebrateCorrectAnswer(btn) {
         const emojis = ["🎉", "✨", "🎊", "🧠", "⭐"];
@@ -1095,26 +1043,17 @@
       function checkAnswer(btn, selectedStr) {
         if (!currentQuiz) return;
         const msgBox = document.getElementById("mcqMessage");
-        const allBtns = document
-          .getElementById("mcqOptions")
-          .querySelectorAll(".mcq-btn");
+        const allBtns = document.getElementById("mcqOptions").querySelectorAll(".mcq-btn");
 
         allBtns.forEach((b) => (b.disabled = true));
         msgBox.style.display = "block";
 
-        const cleanSelected = clean(
-          selectedStr.replace(/^[A-D][\.\)]\s*/, "").trim(),
-        );
-        const cleanCorrectText = clean(
-          currentQuiz.correct.replace(/^[A-D][\.\)]\s*/, "").trim(),
-        );
+        const cleanSelected = clean(selectedStr.replace(/^[A-D][\.\)]\s*/, "").trim());
+        const cleanCorrectText = clean(currentQuiz.correct.replace(/^[A-D][\.\)]\s*/, "").trim());
         const selectedIndex = Array.from(allBtns).indexOf(btn);
         const selectedLetter = ["A", "B", "C", "D"][selectedIndex];
 
-        const isCorrect =
-          cleanSelected === cleanCorrectText ||
-          currentQuiz.correct.includes(cleanSelected) ||
-          currentQuiz.correct.trim().toUpperCase() === selectedLetter;
+        const isCorrect = cleanSelected === cleanCorrectText || currentQuiz.correct.includes(cleanSelected) || currentQuiz.correct.trim().toUpperCase() === selectedLetter;
 
         if (isCorrect) {
           btn.style.borderColor = "var(--primary-green)";
@@ -1129,13 +1068,8 @@
           btn.style.backgroundColor = "var(--wrong-bg)";
           allBtns.forEach((b, idx) => {
             const btnLetter = ["A", "B", "C", "D"][idx];
-            const cleanBtnText = clean(
-              b.innerText.replace(/^[A-D][\.\)]\s*/, "").trim(),
-            );
-            if (
-              cleanBtnText.includes(cleanCorrectText) ||
-              currentQuiz.correct.trim().toUpperCase() === btnLetter
-            ) {
+            const cleanBtnText = clean(b.innerText.replace(/^[A-D][\.\)]\s*/, "").trim());
+            if (cleanBtnText.includes(cleanCorrectText) || currentQuiz.correct.trim().toUpperCase() === btnLetter) {
               b.style.borderColor = "var(--primary-green)";
               b.style.borderWidth = "2px";
             }

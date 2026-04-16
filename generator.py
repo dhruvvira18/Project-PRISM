@@ -9,7 +9,6 @@ load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 client_ai = genai.Client(api_key=API_KEY)
 
-# FIXED: Added `grade` to signature
 def get_prism_content_from_db(user_query: str, student_level: str, grade: str, subject: str, chapter: str, collection):
     """
     Queries ChromaDB for context, enforces strict syllabus bounds, and generates UI-friendly content.
@@ -17,14 +16,11 @@ def get_prism_content_from_db(user_query: str, student_level: str, grade: str, s
     if not collection:
         raise ValueError("Database collection is not initialized. Run ingest.py.")
 
-    # 1. Format frontend strings to match ChromaDB metadata from ingest.py
-    # "Grade 6" -> "grade6"
     formatted_grade = grade.lower().replace(" ", "")
-    # "Social Science" -> "social_science"
     formatted_subject = subject.lower().replace(" ", "_")
     chapter = chapter.strip()
-    normalized_chapter = " ".join(chapter.lower().split())
 
+    # FIXED: Updated visual to use Mermaid syntax so the frontend renders it correctly
     redirect_response = {
         "title": "Let's Stay on Track!",
         "flashcards": [{
@@ -36,7 +32,7 @@ def get_prism_content_from_db(user_query: str, student_level: str, grade: str, s
             ]
         }],
         "dopamine_hook": "Focused brains learn faster! ✨",
-        "visual": {"type": "flow_diagram", "objects": [], "arrows": [], "animation_steps": []},
+        "visual": {"mermaid": "graph TD\n A[Out of Bounds] --> B[Stay Focused on Subject]\n B --> C[Ask a New Question]"},
         "key_points": ["Stay curious", "Focus on the current chapter"],
         "analogy": "Learning is like a map — you have to explore one zone before unlocking the next.",
         "quiz": {
@@ -47,12 +43,11 @@ def get_prism_content_from_db(user_query: str, student_level: str, grade: str, s
         }
     }
 
-    # 2. Retrieve Context from Vector DB (Strict Filtering with Graceful Degradation)
     try:
         # First attempt: Exact match on grade, subject, and chapter
         results = collection.query(
             query_texts=[user_query], 
-            n_results=5,  # Increased to 5 for adequate context
+            n_results=5,
             where={
                 "$and": [
                     {"grade": {"$eq": formatted_grade}},
@@ -62,22 +57,10 @@ def get_prism_content_from_db(user_query: str, student_level: str, grade: str, s
             }
         )
 
-        # If no results, try normalized chapter name match
-        if not results['documents'] or not results['documents'][0]:
-            logging.info(f"No exact chapter match found for '{chapter}', trying normalized chapter lookup.")
-            results = collection.query(
-                query_texts=[user_query], 
-                n_results=5,
-                where={
-                    "$and": [
-                        {"grade": {"$eq": formatted_grade}},
-                        {"subject": {"$eq": formatted_subject}},
-                        {"chapter_name_normalized": {"$eq": normalized_chapter}}
-                    ]
-                }
-            )
+        # FIXED: Removed the hallucinated 'chapter_name_normalized' query 
+        # that Copilot injected, as ingest.py never created that metadata.
 
-        # If still no results, fallback to grade and subject only
+        # Fallback to grade and subject only
         if not results['documents'] or not results['documents'][0]:
             logging.info(f"No chapter-level match found, falling back to grade and subject for Grade: {formatted_grade}, Subject: {formatted_subject}")
             results = collection.query(
@@ -91,7 +74,7 @@ def get_prism_content_from_db(user_query: str, student_level: str, grade: str, s
                 }
             )
 
-        # Final fallback: grade-only retrieval if subject metadata is inconsistent
+        # Final fallback: grade-only retrieval
         if not results['documents'] or not results['documents'][0]:
             logging.info(f"No grade+subject results found, falling back to grade only for Grade: {formatted_grade}")
             results = collection.query(
@@ -137,7 +120,7 @@ def get_prism_content_from_db(user_query: str, student_level: str, grade: str, s
     2. **DOPAMINE HOOK**: Start with something surprising or relatable to grab attention.
     3. **Bold ONLY key term** (max 5 words per bold).
     4. **Analogy**: Use EVERYDAY objects (phone, pizza, skateboard) - NO technical jargon.
-    5. **Visuals**: Provide visual flowcharts if the concept is sequential.
+    5. **Visuals**: Always provide a flowchart mapping the concept using ONLY valid Mermaid.js syntax.
     6. **Flashcards**: Max 3 bullet points per card. Max 3 cards total.
     7. **Key Points**: Max 3, each ONE sentence, highly memorable.
 
@@ -146,7 +129,7 @@ def get_prism_content_from_db(user_query: str, student_level: str, grade: str, s
       "title": "SHORT TITLE",
       "flashcards": [ {{"title": "Flashcard 1", "bullet_points": ["Point 1"]}} ],
       "dopamine_hook": "Fun fact...",
-      "visual": {{ "type": "flow_diagram", "objects": [], "arrows": [], "animation_steps": [] }},
+      "visual": {{ "mermaid": "graph TD\\n A[First Concept] --> B[Second Concept]" }},
       "key_points": ["Memorable point 1"],
       "analogy": "Analogy...",
       "quiz": {{
