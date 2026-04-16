@@ -48,14 +48,14 @@ class LevelAnswers(BaseModel):
 @app.get("/grades")
 async def get_grades():
     # FIXED: Added Grade 5 to strictly meet your 5-10 requirement
-    if not supabase: return {"grades": ["Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10"]}
+    if not supabase: return {"grades": ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10"]}
     try:
         res = supabase.table("syllabus").select("grade").execute()
         unique_grades = sorted(list(set([row["grade"] for row in res.data])))
-        return {"grades": unique_grades if unique_grades else ["Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10"]}
+        return {"grades": unique_grades if unique_grades else ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10"]}
     except Exception as e:
         logging.error(f"Supabase error in get_grades: {e}")
-        return {"grades": ["Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10"]}
+        return {"grades": ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10"]}
 
 @app.get("/subjects")
 async def get_subjects(grade: str = Query(...)):

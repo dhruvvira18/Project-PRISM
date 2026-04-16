@@ -104,8 +104,8 @@ if __name__ == "__main__":
     # Set these to the specific folder names you want to test right now.
     # To run the ENTIRE library later, change both values to None.
     
-    TEST_GRADE = "grade6"       # e.g., "grade6", "grade7", or None
-    TEST_SUBJECT = "science"    # e.g., "science", "social_science", or None
+    TEST_GRADE = None       # e.g., "grade6", "grade7", or None
+    TEST_SUBJECT = None    # e.g., "science", "social_science", or None
     
     logging.info(f"Starting ingestion. Target Grade: {TEST_GRADE} | Target Subject: {TEST_SUBJECT}")
     ingest_data(target_grade=TEST_GRADE, target_subject=TEST_SUBJECT)

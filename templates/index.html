@@ -424,7 +424,12 @@
         <p class="text-muted" style="font-size: 1.2rem">
           What are we focusing on today?
         </p>
-        <div id="chapterButtons" class="subject-grid"></div>
+        <div id="chapterSelection" class="d-flex flex-column align-items-center gap-3">
+          <select id="chapterDropdown" class="form-select" style="width: 300px; padding: 1rem; border: 2px solid var(--primary-blue); border-radius: 20px; background-color: white; box-shadow: var(--card-shadow); font-size: 1.1rem; color: var(--text-dark);">
+            <option value="">Choose a chapter...</option>
+          </select>
+          <button id="startLearningBtn" class="btn btn-ask" style="width: 300px;" disabled>Start Learning</button>
+        </div>
       </div>
 
       <div id="phase2" class="phase text-center">
@@ -607,24 +612,34 @@
         try {
           const res = await fetch(`${API_URL}/chapters?grade=${encodeURIComponent(currentGrade)}&subject=${encodeURIComponent(subject)}`);
           const data = await res.json();
-          const container = document.getElementById("chapterButtons");
-          container.innerHTML = "";
-
+          const dropdown = document.getElementById("chapterDropdown");
+          const startBtn = document.getElementById("startLearningBtn");
+          
+          dropdown.innerHTML = '<option value="">Choose a chapter...</option>';
+          
           if (data.chapters.length === 0) {
-            container.innerHTML = "<p class='text-muted'>No chapters found in Supabase.</p>";
+            dropdown.innerHTML = '<option value="">No chapters found in Supabase.</option>';
+            startBtn.disabled = true;
             return;
           }
-
+          
           data.chapters.forEach((chap) => {
-            const btn = document.createElement("button");
-            btn.className = "btn-subject";
-            btn.innerText = chap;
-            btn.onclick = () => {
-              currentChapter = chap;
-              loadLevelTest(subject);
-            };
-            container.appendChild(btn);
+            const option = document.createElement("option");
+            option.value = chap;
+            option.textContent = chap;
+            dropdown.appendChild(option);
           });
+          
+          dropdown.onchange = () => {
+            currentChapter = dropdown.value;
+            startBtn.disabled = !currentChapter;
+          };
+          
+          startBtn.onclick = () => {
+            if (currentChapter) {
+              loadLevelTest(subject);
+            }
+          };
         } catch (e) { console.error(e); }
       }
 
@@ -753,7 +768,7 @@
           });
         }
 
-        if (data.visual && data.visual.mermaid) {
+        if (data.visual && (data.visual.mermaid || (Array.isArray(data.visual.objects) && data.visual.objects.length > 0))) {
           dynamicStepsData.push({
             type: "visual",
             title: "Visual Blueprint",
@@ -799,23 +814,83 @@
 
       // --- MERMAID DIAGRAM GENERATOR ---
       function renderDiagram(visualData) {
-        if (!visualData || !visualData.mermaid) return "";
-        
-        const code = visualData.mermaid.trim();
-        const diagramId = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        
-        // Guardrail: If LLM hallucinates standard text instead of Mermaid Code (graph, flowchart, pie, etc.)
-        const isMermaid = /^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|pie|gantt|journey)/i.test(code);
-        
-        if (!isMermaid) {
+        if (!visualData) return "";
+
+        if (visualData.mermaid) {
+          const code = visualData.mermaid.trim();
+          const diagramId = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          const isMermaid = /^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|pie|gantt|journey)/i.test(code);
+
+          if (!isMermaid) {
             return `<div class="p-4 bg-light border rounded text-center text-muted" style="border-radius: 12px; margin: 20px 0;">
                       <i class="fas fa-sitemap mb-2" style="font-size: 2rem; color: var(--primary-blue)"></i>
                       <p class="mb-0"><strong>Visual Concept:</strong><br>${code}</p>
                     </div>`;
+          }
+
+          return `<div class="mermaid-wrapper">
+                    <div id="${diagramId}" class="mermaid">${code}</div>
+                  </div>`;
         }
 
-        return `<div class="mermaid-wrapper">
-                  <div id="${diagramId}" class="mermaid">${code}</div>
+        if (Array.isArray(visualData.objects) && visualData.objects.length > 0) {
+          const width = 450;
+          const height = 320;
+          const padding = 25;
+          const boxWidth = 120;
+          const boxHeight = 55;
+          const objects = visualData.objects;
+          const columns = Math.min(objects.length, 3);
+          const layout = {};
+
+          let svg = `<div class="mermaid-wrapper"><svg viewBox="0 0 ${width} ${height}" style="width:100%; display:block; font-family: 'Nunito', sans-serif; background:#fff; border-radius:12px;">
+            <defs>
+              <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--primary-blue)"/>
+              </marker>
+            </defs>`;
+
+          objects.forEach((obj, index) => {
+            const col = index % columns;
+            const row = Math.floor(index / columns);
+            const x = padding + col * (boxWidth + padding);
+            const y = padding + row * (boxHeight + padding);
+            const id = obj.id || `obj-${index}`;
+            const shape = obj.shape || "rect";
+            layout[id] = { x, y, width: boxWidth, height: boxHeight, cx: x + boxWidth / 2, cy: y + boxHeight / 2 };
+
+            if (shape === "circle") {
+              const r = Math.min(boxWidth, boxHeight) / 2;
+              svg += `<circle cx="${x + r}" cy="${y + r}" r="${r}" fill="#F8FAFC" stroke="var(--text-dark)" stroke-width="2.5"/>`;
+              svg += `<text x="${x + r}" y="${y + r}" font-size="13" fill="var(--text-dark)" text-anchor="middle" dominant-baseline="middle" font-weight="700">${obj.label || ""}</text>`;
+            } else {
+              svg += `<rect x="${x}" y="${y}" width="${boxWidth}" height="${boxHeight}" fill="#F8FAFC" stroke="var(--text-dark)" stroke-width="2.5" rx="12"/>`;
+              svg += `<text x="${x + boxWidth / 2}" y="${y + boxHeight / 2}" font-size="13" fill="var(--text-dark)" text-anchor="middle" dominant-baseline="middle" font-weight="700">${obj.label || ""}</text>`;
+            }
+          });
+
+          if (Array.isArray(visualData.arrows)) {
+            visualData.arrows.forEach((arr, index) => {
+              const fromId = typeof arr.from === "string" ? arr.from : null;
+              const toId = typeof arr.to === "string" ? arr.to : null;
+              const fromPoint = fromId && layout[fromId] ? layout[fromId] : { cx: 0, cy: 0 };
+              const toPoint = toId && layout[toId] ? layout[toId] : { cx: 0, cy: 0 };
+              svg += `<line x1="${fromPoint.cx}" y1="${fromPoint.cy}" x2="${toPoint.cx}" y2="${toPoint.cy}" stroke="var(--primary-blue)" stroke-width="3" marker-end="url(#arrow)"/>`;
+              if (arr.label) {
+                const lx = (fromPoint.cx + toPoint.cx) / 2;
+                const ly = (fromPoint.cy + toPoint.cy) / 2 - 10;
+                svg += `<text x="${lx}" y="${ly}" font-size="12" fill="var(--primary-blue)" text-anchor="middle" dominant-baseline="middle" font-weight="700">${arr.label}</text>`;
+              }
+            });
+          }
+
+          svg += `</svg></div>`;
+          return svg;
+        }
+
+        return `<div class="p-4 bg-light border rounded text-center text-muted" style="border-radius: 12px; margin: 20px 0;">
+                  <i class="fas fa-sitemap mb-2" style="font-size: 2rem; color: var(--primary-blue)"></i>
+                  <p class="mb-0"><strong>Visual Concept:</strong><br>Visual diagram data is not in a supported format.</p>
                 </div>`;
       }
 
