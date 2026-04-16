@@ -937,7 +937,7 @@
             <h3 class="mb-3 d-flex align-items-center justify-content-between">
                 <span>${stepData.title}</span> ${audioHTML}
             </h3>
-            <p class="content-text" id="audio-text-${index}">${stepData.content}</p>`;
+            <div class="content-text" id="audio-text-${index}">${stepData.content}</div>`;
         } else if (stepData.type === "visual") {
           innerContent = `
             <span class="step-indicator">Step ${index + 1} of ${dynamicStepsData.length}</span>
