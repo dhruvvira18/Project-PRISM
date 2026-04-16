@@ -43,28 +43,39 @@ except Exception:
 class LevelAnswers(BaseModel):
     answers: list[int]
 
-# --- SUPABASE DYNAMIC ENDPOINTS ---
+# --- SUPABASE DYNAMIC ENDPOINTS (WITH SAFE FALLBACKS) ---
 
 @app.get("/grades")
 async def get_grades():
-    if not supabase: return {"grades": ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10"]}
-    res = supabase.table("syllabus").select("grade").execute()
-    unique_grades = sorted(list(set([row["grade"] for row in res.data])))
-    return {"grades": unique_grades if unique_grades else ["Grade 6", "Grade 7"]}
+    default_grades = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10"]
+    if supabase:
+        res = supabase.table("syllabus").select("grade").execute()
+        unique_grades = sorted(list(set([row["grade"] for row in res.data])))
+        # If Supabase has data, use it. Otherwise, fallback to default.
+        if len(unique_grades) > 0:
+            return {"grades": unique_grades}
+    return {"grades": default_grades}
 
 @app.get("/subjects")
 async def get_subjects(grade: str = Query(...)):
-    if not supabase: return {"subjects": ["Science", "Social Studies"]}
-    res = supabase.table("syllabus").select("subject").eq("grade", grade).execute()
-    unique_subjects = sorted(list(set([row["subject"] for row in res.data])))
-    return {"subjects": unique_subjects}
+    default_subjects = ["Science", "Social Studies"]
+    if supabase:
+        res = supabase.table("syllabus").select("subject").eq("grade", grade).execute()
+        unique_subjects = sorted(list(set([row["subject"] for row in res.data])))
+        if len(unique_subjects) > 0:
+            return {"subjects": unique_subjects}
+    return {"subjects": default_subjects}
 
 @app.get("/chapters")
 async def get_chapters(grade: str = Query(...), subject: str = Query(...)):
-    if not supabase: return {"subject": subject, "chapters": ["Chapter 1", "Chapter 2"]}
-    res = supabase.table("syllabus").select("chapter_name").eq("grade", grade).eq("subject", subject).execute()
-    unique_chapters = sorted(list(set([row["chapter_name"] for row in res.data])))
-    return {"subject": subject, "chapters": unique_chapters}
+    # Fallback to a generic list if Supabase isn't populated for this subject yet
+    default_chapters = ["Chapter 1", "Chapter 2", "Chapter 3", "Chapter 4", "Chapter 5"]
+    if supabase:
+        res = supabase.table("syllabus").select("chapter_name").eq("grade", grade).eq("subject", subject).execute()
+        unique_chapters = sorted(list(set([row["chapter_name"] for row in res.data])))
+        if len(unique_chapters) > 0:
+            return {"subject": subject, "chapters": unique_chapters}
+    return {"subject": subject, "chapters": default_chapters}
 
 @app.get("/level-test")
 async def get_level_test(subject: str = Query(...)):
@@ -82,6 +93,18 @@ async def calculate_level(data: LevelAnswers):
     if med <= 2: return {"level": "Beginner", "median_score": med}
     elif med <= 3: return {"level": "Intermediate", "median_score": med}
     return {"level": "Advanced", "median_score": med}
+
+# --- RESTORED SESSION STATS ---
+@app.get("/session-stats")
+async def get_session_stats():
+    """Session statistics for progress tracking (ADHD motivation boost)."""
+    return {
+        "topics_learned": 0,
+        "questions_correct": 0,
+        "streak": 0,
+        "session_minutes": 0,
+        "next_milestone": "Learn your first topic to unlock 'Knowledge Seeker' badge! 🎓"
+    }
 
 # --- AI CORE ENDPOINT ---
 

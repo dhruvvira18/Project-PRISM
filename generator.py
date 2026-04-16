@@ -68,7 +68,7 @@ def get_prism_content_from_db(user_query: str, student_level: str, subject: str,
         logging.error(f"ChromaDB Query Error: {e}")
         return redirect_response 
 
-    # 2. Build the STRICT Guardrail Prompt
+    # 2. Build the STRICT Guardrail Prompt with RESTORED VISUAL RULES
     prompt = f"""
     ROLE: Grade 6-10 ADHD Study Mentor (DOPAMINE-OPTIMIZED).
     STUDENT_LEVEL: {student_level}
@@ -86,44 +86,58 @@ def get_prism_content_from_db(user_query: str, student_level: str, subject: str,
 
     CRITICAL ADHD RULES:
     1. **CONTENT LIMIT**: flashcard_content = MAXIMUM 2 SENTENCES. ONE core concept only.
-    2. **DOPAMINE HOOK**: Start with something surprising or relatable to grab attention.
-    3. **Bold ONLY key term** (max 5 words per bold).
+    2. **DOPAMINE HOOK**: Start with something surprising, fun, or relatable to grab attention.
+    3. **Bold ONLY key term** (max 5 words per bold): **Chemical Reaction** not long phrases.
     4. **Analogy**: Use EVERYDAY objects (phone, pizza, skateboard) - NO technical jargon.
-    5. **Visuals (CRITICAL)**:
+    5. **Quiz Calibration**: Beginner should feel 70% success (confidence), Intermediate 60%, Advanced 50%.
+    6. **Visuals (CRITICAL FOR UNDERSTANDING)**:
        - ALWAYS provide visual if concept is sequential or has steps.
-       - FLOWCHART MUST BE VERTICAL.
-       - ALWAYS include ARROWS connecting boxes/steps.
-    6. **Flashcards**: Max 3 bullet points per card. Max 3 cards total.
-    7. **Key Points**: Max 3, each ONE sentence, highly memorable.
+       - FLOWCHART MUST BE VERTICAL (top-down flow only, never horizontal).
+       - ALWAYS include ARROWS connecting boxes/steps (arrows show the flow direction).
+       - Arrow format: {{"id":"arrow1","label":"then","from":[225,70],"to":[225,100]}}
+       - Labels on arrows: "then", "creates", "causes", "leads to", "results in"
+       - Keep labels 1-3 words max on boxes and arrows.
+    7. **Flashcards**: Use a maximum of 3 bullet points per flashcard. Max 3 bullet points per card.
+    8. **Key Points**: Max 3, each ONE sentence, highly memorable.
 
     RETURN ONLY VALID JSON:
     {{
-      "title": "SHORT TITLE",
-      "flashcards": [ {{"title": "Flashcard 1", "bullet_points": ["Point 1"]}} ],
-      "dopamine_hook": "Fun fact...",
-      "visual": {{ "type": "flow_diagram", "objects": [], "arrows": [], "animation_steps": [] }},
-      "key_points": ["Memorable point 1"],
-      "analogy": "Analogy...",
+      "title": "SHORT TITLE (2-3 words max)",
+      "flashcards": [
+        {{
+          "title": "Flashcard 1",
+          "bullet_points": ["Point 1", "Point 2", "Point 3"]
+        }}
+      ],
+      "dopamine_hook": "Fun fact, surprising connection, or real-world relevance",
+      "visual": {{
+        "type": "flow_diagram",
+        "objects": [
+          {{"id":"box1","shape":"rect","x":155,"y":20,"width":140,"height":50,"label":"Step 1"}}
+        ],
+        "arrows": [
+          {{"id":"arrow1","label":"then","from":[225,70],"to":[225,100]}}
+        ],
+        "animation_steps": [{{"show":"box1"}}, {{"show":"arrow1"}}]
+      }},
+      "key_points": ["Memorable point 1", "Memorable point 2"],
+      "analogy": "Real-world everyday object comparison",
       "quiz": {{
-        "question": "Clear question.",
+        "question": "Clear question (simple language).",
         "options": ["A. Option 1", "B. Option 2", "C. Option 3", "D. Option 4"],
         "correct": "Exact string of correct option",
-        "explanation": "Why correct"
+        "explanation": "Why correct + growth mindset encouragement"
       }}
     }}"""
 
     # 3. Call Gemini (Wrapped in a Try/Except block for server resilience)
     try:
         response = client_ai.models.generate_content(
-            model="gemini-2.5-flash", # Using the active, supported 2026 model
-            contents=prompt,
-            config={
-                "response_mime_type": "application/json" # Forces the strict JSON formatting
-            }
+            model="gemini-2.5-flash", 
+            contents=prompt
         )
     except Exception as api_error:
         logging.error(f"Gemini API Down/Failed: {api_error}")
-        # Return a graceful, ADHD-friendly error card instead of crashing
         return {
             "title": "Network Hiccup! 🛑",
             "flashcards": [
@@ -154,7 +168,6 @@ def get_prism_content_from_db(user_query: str, student_level: str, subject: str,
         return json.loads(text_response)
     except Exception as parse_error:
         logging.error(f"Failed to parse Gemini output: {parse_error}\nRaw Text: {response.text}")
-        # Fallback if Gemini hallucinates non-JSON formatting
         return {
             "title": "Brain Misfire! ⚡",
             "flashcards": [{
