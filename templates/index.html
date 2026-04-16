@@ -341,13 +341,15 @@
       }
 
       /* TTS Highlighting System */
-      .tts-word {
+      .word {
         transition: background-color 0.1s ease;
         border-radius: 4px;
         padding: 0 2px;
       }
       .tts-active {
-        background-color: #fefcbf;
+        background-color: #f6ad55;
+        border-radius: 3px;
+        transition: background-color 0.2s;
         color: var(--text-dark);
         font-weight: 700;
       }
@@ -557,6 +559,8 @@
       }
 
       function switchPhase(phaseId) {
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        if (typeof stopAudio === "function") stopAudio();
         document
           .querySelectorAll(".phase")
           .forEach((p) => p.classList.remove("active-phase"));
@@ -923,6 +927,7 @@
             ? `<div class="audio-controls">
                 <i class="fas fa-volume-up speaker-icon" id="audio-play-${index}" onclick="toggleAudio('audio-text-${index}', ${index})" title="Play/Pause"></i>
                 <i class="fas fa-undo speaker-icon" onclick="restartAudio('audio-text-${index}', ${index})" title="Restart" style="margin-left:10px; font-size: 1rem;"></i>
+                <i class="fas fa-stop speaker-icon" onclick="stopAudio()" title="Stop" style="margin-left:10px; font-size: 1rem;"></i>
                </div>`
             : "";
 
@@ -932,7 +937,7 @@
             <h3 class="mb-3 d-flex align-items-center justify-content-between">
                 <span>${stepData.title}</span> ${audioHTML}
             </h3>
-            <p class="content-text" id="audio-text-${index}">${stepData.content}</p>`;
+            <div class="content-text" id="audio-text-${index}">${stepData.content}</div>`;
         } else if (stepData.type === "visual") {
           innerContent = `
             <span class="step-indicator">Step ${index + 1} of ${dynamicStepsData.length}</span>
@@ -980,14 +985,54 @@
 
       function wrapWords(el, prefix) {
         if (el.dataset.wrapped === "true") return;
-        let words = el.innerText.split(/\s+/);
-        el.innerHTML = words
-          .map(
-            (word, i) =>
-              `<span id="${prefix}-w${i}" class="tts-word">${word}</span>`,
-          )
-          .join(" ");
+
+        let synthText = "";
+        let wordIndex = 0;
+
+        function traverse(node) {
+          if (node.nodeType === 3) { // TEXT_NODE
+            let text = node.nodeValue;
+            if (!text) return;
+
+            let regex = /\S+|\s+/g;
+            let match;
+            let fragment = document.createDocumentFragment();
+            while ((match = regex.exec(text)) !== null) {
+              if (/\S/.test(match[0])) {
+                let span = document.createElement("span");
+                span.className = "word";
+                span.id = prefix + "-w" + wordIndex;
+                span.textContent = match[0];
+                synthText += match[0];
+
+                fragment.appendChild(span);
+                wordIndex++;
+              } else {
+                synthText += match[0];
+                fragment.appendChild(document.createTextNode(match[0]));
+              }
+            }
+            node.parentNode.replaceChild(fragment, node);
+          } else if (node.nodeType === 1) { // ELEMENT_NODE
+            if (node.classList && node.classList.contains('word')) return;
+            if (node.nodeName === 'SCRIPT' || node.nodeName === 'STYLE') return;
+
+            let isBlock = ['DIV', 'P', 'LI', 'BR', 'UL', 'OL', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'TR', 'TD'].includes(node.nodeName);
+            if (isBlock && synthText.length > 0 && !synthText.endsWith(' ') && !synthText.endsWith('\n')) {
+              synthText += ' ';
+            }
+
+            Array.from(node.childNodes).forEach(traverse);
+
+            if (isBlock && !synthText.endsWith(' ') && !synthText.endsWith('\n')) {
+              synthText += ' ';
+            }
+          }
+        }
+
+        Array.from(el.childNodes).forEach(traverse);
         el.dataset.wrapped = "true";
+        el.dataset.synthText = synthText;
       }
 
       function playAudio(elementId, index) {
@@ -995,10 +1040,11 @@
         const playBtn = document.getElementById(`audio-play-${index}`);
         if (!textEl) return;
 
-        const text = textEl.innerText.trim();
-        if (!text) return;
-
         wrapWords(textEl, elementId);
+
+        const text = textEl.dataset.synthText;
+        if (!text || !text.trim()) return;
+
         speechSynthesis.cancel();
 
         prismUtterance = new SpeechSynthesisUtterance(text);
@@ -1009,23 +1055,40 @@
 
         prismUtterance.onboundary = (event) => {
           if (event.name !== "word") return;
-          const words = text.substring(0, event.charIndex).trim().split(/\s+/);
-          const wordIndex = words.length - 1;
+          // Substring up to the charIndex, split by whitespace to find word index
+          const trimmed = text.substring(0, event.charIndex).trim();
+          const wordIndex = trimmed === "" ? 0 : trimmed.split(/\s+/).length;
+
           document
-            .querySelectorAll(`#${elementId} .tts-word`)
+            .querySelectorAll(`#${elementId} .word`)
             .forEach((w) => w.classList.remove("tts-active"));
           const span = document.getElementById(`${elementId}-w${wordIndex}`);
           if (span) span.classList.add("tts-active");
         };
 
-        prismUtterance.onend = () => {
+        function clearAudioState() {
           document
-            .querySelectorAll(`#${elementId} .tts-word`)
+            .querySelectorAll(`#${elementId} .word`)
             .forEach((w) => w.classList.remove("tts-active"));
           if (playBtn) playBtn.className = "fas fa-volume-up speaker-icon";
           prismSpeakingIndex = -1;
-        };
+        }
+
+        prismUtterance.onend = clearAudioState;
+        prismUtterance.onerror = clearAudioState;
+        prismUtterance.oncancel = clearAudioState;
+
         speechSynthesis.speak(prismUtterance);
+      }
+
+      function stopAudio() {
+        window.speechSynthesis.cancel();
+        document.querySelectorAll('.word').forEach(w => w.classList.remove('tts-active'));
+        if (prismSpeakingIndex !== -1) {
+          const playBtn = document.getElementById(`audio-play-${prismSpeakingIndex}`);
+          if (playBtn) playBtn.className = "fas fa-volume-up speaker-icon";
+          prismSpeakingIndex = -1;
+        }
       }
 
       function toggleAudio(elementId, index) {
