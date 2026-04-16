@@ -9,12 +9,9 @@ from chromadb.utils import embedding_functions
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 # 1. Initialize ChromaDB
-# This saves the database into a folder named 'prism_db' in your root directory
 client = chromadb.PersistentClient(path="./prism_db")
 ef = embedding_functions.DefaultEmbeddingFunction()
 
-# We use one collection for the entire K-10 library. 
-# We will use metadata to filter by grade/subject during retrieval.
 collection = client.get_or_create_collection(name="prism_curriculum", embedding_function=ef)
 
 def chunk_text(text, chunk_size=1000, overlap=200):
@@ -27,9 +24,8 @@ def chunk_text(text, chunk_size=1000, overlap=200):
         start += chunk_size - overlap
     return chunks
 
-def ingest_data():
-    # Path to your new knowledge base structure
-    kb_path = "codebase\knowledge_base"
+def ingest_data(target_grade=None, target_subject=None):
+    kb_path = "knowledge_base"
     
     if not os.path.exists(kb_path):
         logging.error(f"Folder '{kb_path}' not found! Ensure it is in your root directory.")
@@ -37,11 +33,19 @@ def ingest_data():
 
     # 1. Iterate through Grade folders (grade6, grade7, etc.)
     for grade_folder in os.listdir(kb_path):
+        # ISOLATION: Skip if it doesn't match our target grade
+        if target_grade and grade_folder != target_grade:
+            continue
+            
         grade_path = os.path.join(kb_path, grade_folder)
         if not os.path.isdir(grade_path): continue
 
         # 2. Iterate through Subject folders (science, social_science)
         for subject_folder in os.listdir(grade_path):
+            # ISOLATION: Skip if it doesn't match our target subject
+            if target_subject and subject_folder != target_subject:
+                continue
+
             subject_path = os.path.join(grade_path, subject_folder)
             if not os.path.isdir(subject_path): continue
 
@@ -50,7 +54,6 @@ def ingest_data():
                 logging.warning(f"No mapping.json found in {subject_path}. Skipping.")
                 continue
 
-            # Load the mapping to get human-readable chapter names
             with open(mapping_path, 'r') as f:
                 mapping = json.load(f)
 
@@ -77,10 +80,8 @@ def ingest_data():
                         chunks = chunk_text(text)
                         
                         for c_idx, chunk in enumerate(chunks):
-                            # Create a unique ID: grade6_science_ch2_p1_c0
                             unique_id = f"{grade_folder}_{subject_folder}_ch{ch_num}_p{page_num}_c{c_idx}"
                             
-                            # Upsert adds or updates existing IDs
                             collection.upsert(
                                 documents=[chunk],
                                 ids=[unique_id],
@@ -89,6 +90,7 @@ def ingest_data():
                                     "subject": subject_folder,
                                     "chapter_number": ch_num,
                                     "chapter_name": ch_name,
+                                    "chapter_name_normalized": " ".join(ch_name.strip().lower().split()),
                                     "page": page_num
                                 }]
                             )
@@ -98,4 +100,12 @@ def ingest_data():
     logging.info(f"Ingestion Complete! Total vectors in DB: {collection.count()}")
 
 if __name__ == "__main__":
-    ingest_data()
+    # --- ISOLATION MODE FOR FAST TESTING ---
+    # Set these to the specific folder names you want to test right now.
+    # To run the ENTIRE library later, change both values to None.
+    
+    TEST_GRADE = "grade6"       # e.g., "grade6", "grade7", or None
+    TEST_SUBJECT = "science"    # e.g., "science", "social_science", or None
+    
+    logging.info(f"Starting ingestion. Target Grade: {TEST_GRADE} | Target Subject: {TEST_SUBJECT}")
+    ingest_data(target_grade=TEST_GRADE, target_subject=TEST_SUBJECT)

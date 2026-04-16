@@ -16,7 +16,7 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
-    <link href="..\..\static\style.css" rel="stylesheet" />
+    <link href="../../static/style.css" rel="stylesheet" />
 
     <style>
       :root {
@@ -507,7 +507,7 @@
       // --- GLOBAL STATE ---
       let currentGrade = "";
       let currentSubject = "";
-      let currentChapter = ""; // Tracks the new chapter selection
+      let currentChapter = "";
       let currentLevel = "Intermediate";
       let levelTestSelections = {};
       let currentQuiz = null;
@@ -523,7 +523,7 @@
       let sessionQuestionsCorrect = 0;
       let breakReminderShown = false;
 
-      const API_URL = ""; // Assuming relative path for FastAPI
+      const API_URL = ""; 
 
       // --- SESSION TIMER LOGIC ---
       function startSessionTimer() {
@@ -598,7 +598,7 @@
             const btn = document.createElement("button");
             btn.className = "btn-subject";
             btn.innerText = sub;
-            btn.onclick = () => loadChapters(sub); // Routes to chapters now
+            btn.onclick = () => loadChapters(sub); 
             container.appendChild(btn);
           });
         } catch (e) {
@@ -651,7 +651,7 @@
           levelTestQuestions = data.questions;
 
           if (levelTestQuestions.length === 0) {
-            submitLevelTest(); // Skip if no questions available
+            submitLevelTest(); 
             return;
           }
           renderTestQuestion();
@@ -676,7 +676,6 @@
         block.className = "level-q-container";
         block.innerHTML = `<h4 class="mb-4">${q.question}</h4>`;
 
-        // Parse options from JSONB if necessary
         const options =
           typeof q.options === "string" ? JSON.parse(q.options) : q.options;
         const shuffledOptions = [...options].sort(() => Math.random() - 0.5);
@@ -734,6 +733,7 @@
           }
         });
 
+      // FIXED: The generateAnswer function is fully integrated here
       async function generateAnswer() {
         const input = document.getElementById("questionInput").value.trim();
         if (!input) return;
@@ -742,9 +742,8 @@
         document.getElementById("answerSection").style.display = "none";
 
         try {
-          // Passes the new subject and chapter parameters
           const response = await fetch(
-            `${API_URL}/ask?user_query=${encodeURIComponent(input)}&student_level=${currentLevel}&subject=${encodeURIComponent(currentSubject)}&chapter=${encodeURIComponent(currentChapter)}`,
+            `${API_URL}/ask?user_query=${encodeURIComponent(input)}&student_level=${currentLevel}&grade=${encodeURIComponent(currentGrade)}&subject=${encodeURIComponent(currentSubject)}&chapter=${encodeURIComponent(currentChapter)}`,
           );
           const data = await response.json();
 
@@ -853,27 +852,35 @@
           svg += `<g id="svg-${obj.id}" class="diagram-element">`;
           let rectWidth = obj.width || 140;
           let rectHeight = obj.height || 50;
+          let x = obj.x || 0;
+          let y = obj.y || 0;
           if (obj.shape === "rect") {
-            svg += `<rect x="${obj.x}" y="${obj.y}" width="${rectWidth}" height="${rectHeight}" fill="#F8FAFC" stroke="var(--text-dark)" stroke-width="2.5" rx="8"/>`;
+            svg += `<rect x="${x}" y="${y}" width="${rectWidth}" height="${rectHeight}" fill="#F8FAFC" stroke="var(--text-dark)" stroke-width="2.5" rx="8"/>`;
           } else if (obj.shape === "circle") {
-            svg += `<circle cx="${obj.x}" cy="${obj.y}" r="${obj.r || 30}" fill="#F8FAFC" stroke="var(--text-dark)" stroke-width="2.5"/>`;
+            let cx = obj.x || 0;
+            let cy = obj.y || 0;
+            svg += `<circle cx="${cx}" cy="${cy}" r="${obj.r || 30}" fill="#F8FAFC" stroke="var(--text-dark)" stroke-width="2.5"/>`;
           }
           if (obj.label) {
-            let lx = obj.shape === "rect" ? obj.x + rectWidth / 2 : obj.x;
-            let ly = obj.shape === "rect" ? obj.y + rectHeight / 2 : obj.y;
+            let lx = obj.shape === "rect" ? x + rectWidth / 2 : (obj.x || 0);
+            let ly = obj.shape === "rect" ? y + rectHeight / 2 : (obj.y || 0);
             svg += `<text x="${lx}" y="${ly}" font-size="14" fill="var(--text-dark)" text-anchor="middle" dominant-baseline="middle" font-weight="700">${obj.label}</text>`;
           }
           svg += `</g>`;
         });
 
         (visualData.arrows || []).forEach((arr) => {
-          let isVertical = Math.abs(arr.from[0] - arr.to[0]) < 20;
+          let isVertical = Math.abs((arr.from ? arr.from[0] : 0) - (arr.to ? arr.to[0] : 0)) < 20;
           let motionClass = isVertical ? "arrow-motion-y" : "arrow-motion-x";
           svg += `<g id="svg-${arr.id}" class="diagram-element ${motionClass}">`;
-          svg += `<line x1="${arr.from[0]}" y1="${arr.from[1]}" x2="${arr.to[0]}" y2="${arr.to[1]}" stroke="var(--primary-blue)" stroke-width="3" marker-end="url(#arrow)"/>`;
+          let fromX = arr.from ? arr.from[0] : 0;
+          let fromY = arr.from ? arr.from[1] : 0;
+          let toX = arr.to ? arr.to[0] : 0;
+          let toY = arr.to ? arr.to[1] : 0;
+          svg += `<line x1="${fromX}" y1="${fromY}" x2="${toX}" y2="${toY}" stroke="var(--primary-blue)" stroke-width="3" marker-end="url(#arrow)"/>`;
           if (arr.label) {
-            let lx = (arr.from[0] + arr.to[0]) / 2 + (isVertical ? 30 : 0);
-            let ly = (arr.from[1] + arr.to[1]) / 2 - (isVertical ? 0 : 12);
+            let lx = (fromX + toX) / 2 + (isVertical ? 30 : 0);
+            let ly = (fromY + toY) / 2 - (isVertical ? 0 : 12);
             svg += `<text x="${lx}" y="${ly}" font-size="12" fill="var(--primary-blue)" text-anchor="middle" dominant-baseline="middle" font-weight="700">${arr.label}</text>`;
           }
           svg += `</g>`;
@@ -990,12 +997,32 @@
         el.dataset.wrapped = "true";
       }
 
+      function stripMarkdown(text) {
+        // Remove bold/italic markers: **text**, *text*, __text__, _text_
+        text = text.replace(/\*\*(.*?)\*\*/g, '$1');
+        text = text.replace(/\*(.*?)\*/g, '$1');
+        text = text.replace(/__(.*?)__/g, '$1');
+        text = text.replace(/_(.*?)_/g, '$1');
+        // Remove headers: # ## ###
+        text = text.replace(/^#+\s*/gm, '');
+        // Remove links: [text](url)
+        text = text.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
+        // Remove code blocks: ```code``` and `code`
+        text = text.replace(/```[\s\S]*?```/g, '');
+        text = text.replace(/`([^`]+)`/g, '$1');
+        // Remove lists: - or * or numbers
+        text = text.replace(/^[\s]*[-\*\+] /gm, '');
+        text = text.replace(/^[\s]*\d+\. /gm, '');
+        return text.trim();
+      }
+
       function playAudio(elementId, index) {
         const textEl = document.getElementById(elementId);
         const playBtn = document.getElementById(`audio-play-${index}`);
         if (!textEl) return;
 
-        const text = textEl.innerText.trim();
+        const rawText = textEl.innerText.trim();
+        const text = stripMarkdown(rawText);
         if (!text) return;
 
         wrapWords(textEl, elementId);
