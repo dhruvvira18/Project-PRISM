@@ -115,8 +115,11 @@ def get_prism_content_from_db(user_query: str, student_level: str, subject: str,
     # 3. Call Gemini (Wrapped in a Try/Except block for server resilience)
     try:
         response = client_ai.models.generate_content(
-            model="gemini-2.0-flash", 
-            contents=prompt
+            model="gemini-2.5-flash", # Using the active, supported 2026 model
+            contents=prompt,
+            config={
+                "response_mime_type": "application/json" # Forces the strict JSON formatting
+            }
         )
     except Exception as api_error:
         logging.error(f"Gemini API Down/Failed: {api_error}")

@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-from codebase.generator import get_prism_content_from_db
+from generator import get_prism_content_from_db
 
 logging.basicConfig(level=logging.INFO)
 
@@ -102,9 +102,9 @@ async def ask_assistant(
 
 # --- STATIC FILES ---
 
-STATIC_DIR = os.path.join("codebase" ,"static")
+STATIC_DIR = "static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 @app.get("/")
 async def read_index():
-    return FileResponse(os.path.join("codebase", "templates", "index.html"))
+    return FileResponse(os.path.join("templates", "index.html"))
