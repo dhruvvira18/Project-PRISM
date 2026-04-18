@@ -595,6 +595,12 @@
 
       // --- INITIALIZATION ---
       window.onload = async () => {
+        const userId = localStorage.getItem('prism_user_id');
+        if (!userId) {
+          window.location.href = '/auth';
+          return;
+        }
+
         try {
           const res = await fetch(`${API_URL}/grades`);
           const data = await res.json();
@@ -618,6 +624,11 @@
         } catch (e) {
           document.getElementById("gradeButtons").innerHTML =
             "<p class='text-danger'>Cannot connect to AI Backend.</p>";
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('flow') === 'calibration') {
+            loadLevelTest("BYOM");
         }
       };
 
@@ -713,17 +724,20 @@
         block.className = "level-q-container";
         block.innerHTML = `<h4 class="mb-4">${q.question}</h4>`;
 
+
         // Parse options from JSONB if necessary
-        const options =
-          typeof q.options === "string" ? JSON.parse(q.options) : q.options;
+        const options = typeof q.options === "string" ? JSON.parse(q.options) : q.options;
         const shuffledOptions = [...options].sort(() => Math.random() - 0.5);
 
         shuffledOptions.forEach((opt) => {
           const btn = document.createElement("button");
           btn.className = "level-option";
-          btn.innerText = opt.text;
+          // Fix: if opt is a string (like from BYOM test), just use it.
+          // The BYOM endpoint returns strings like "A. Diagrams" and difficulty=2
+          const isString = typeof opt === 'string';
+          btn.innerText = isString ? opt : opt.text;
           btn.onclick = () => {
-            levelTestSelections[currentTestIndex] = opt.difficulty;
+            levelTestSelections[currentTestIndex] = isString ? 2 : opt.difficulty;
             setTimeout(() => {
               currentTestIndex++;
               renderTestQuestion();
@@ -794,8 +808,29 @@
         }
 
         document.getElementById("levelBadge").innerText =
-          `${currentChapter} | Level: ${currentLevel}`;
-        switchPhase("phase3");
+          `${currentChapter || 'Calibration'} | Level: ${currentLevel}`;
+
+        const userId = localStorage.getItem('prism_user_id');
+        if (userId) {
+          try {
+            await fetch(`${API_URL}/update-user-level`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ user_id: userId, level: currentLevel }),
+            });
+            localStorage.setItem('prism_user_level', currentLevel);
+          } catch (e) {
+            console.error("Failed to update user level");
+          }
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('flow') === 'calibration') {
+            window.history.replaceState({}, document.title, "/");
+            switchPhase("phase1a");
+        } else {
+            switchPhase("phase3");
+        }
       }
 
       // --- AI RAG FETCH ---

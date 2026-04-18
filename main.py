@@ -1,3 +1,4 @@
+import hashlib
 import os
 import statistics
 import chromadb
@@ -210,6 +211,70 @@ async def upload_byom(file: UploadFile = File(...)):
     except Exception as e:
         logging.error(f"BYOM upload failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to process BYOM PDF. Please try again.")
+
+
+class AuthCheckEmail(BaseModel):
+    email: str
+
+class AuthLoginSignup(BaseModel):
+    email: str
+    password: str
+
+class UpdateUserLevel(BaseModel):
+    user_id: str
+    level: str
+
+@app.get("/auth")
+async def read_auth():
+    return FileResponse(os.path.join("templates", "login.html"))
+
+@app.post("/auth/check-email")
+async def check_email(data: AuthCheckEmail):
+    if not supabase:
+        return JSONResponse(status_code=500, content={"error": "Supabase not connected."})
+    res = supabase.table("users").select("id").eq("email", data.email).execute()
+    return {"exists": len(res.data) > 0}
+
+@app.post("/auth/signup")
+async def signup(data: AuthLoginSignup):
+    if not supabase:
+        return JSONResponse(status_code=500, content={"error": "Supabase not connected."})
+    hashed_pw = hashlib.sha256(data.password.encode()).hexdigest()
+    try:
+        res = supabase.table("users").insert({
+            "email": data.email,
+            "password_hash": hashed_pw,
+            "grade": "Beginner",
+            "total_points": 0,
+            "current_streak": 0
+        }).execute()
+        if res.data:
+            return {"user_id": res.data[0]["id"]}
+        else:
+            return JSONResponse(status_code=400, content={"error": "Failed to create user."})
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+
+@app.post("/auth/login")
+async def login(data: AuthLoginSignup):
+    if not supabase:
+        return JSONResponse(status_code=500, content={"error": "Supabase not connected."})
+    hashed_pw = hashlib.sha256(data.password.encode()).hexdigest()
+    res = supabase.table("users").select("*").eq("email", data.email).eq("password_hash", hashed_pw).execute()
+    if res.data:
+        return {"user": res.data[0]}
+    else:
+        return JSONResponse(status_code=401, content={"error": "Invalid email or password."})
+
+@app.post("/update-user-level")
+async def update_user_level(data: UpdateUserLevel):
+    if not supabase:
+        return JSONResponse(status_code=500, content={"error": "Supabase not connected."})
+    try:
+        res = supabase.table("users").update({"grade": data.level}).eq("id", data.user_id).execute()
+        return {"success": True}
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
 
 # --- STATIC FILES ---
 
