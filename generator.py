@@ -71,6 +71,27 @@ def get_prism_content_from_db(user_query: str, student_level: str, subject: str,
         logging.error(f"ChromaDB Query Error: {e}")
         return redirect_response 
 
+    # Retrieval verification: Check if context is sufficient
+    if len(context.strip()) < 100:  # Minimum length threshold
+        logging.info("Retrieved context is insufficient (too short). Returning 'I don't know'.")
+        return {
+            "title": "I Don't Know",
+            "flashcards": [
+                {
+                    "title": "No Relevant Information",
+                    "bullet_points": [
+                        "I couldn't find enough information in the provided context to answer your question.",
+                        "Try rephrasing or asking about a different topic."
+                    ]
+                }
+            ],
+            "dopamine_hook": "Knowledge gaps are just opportunities to learn more! 📚",
+            "visual": {"type": "flow_diagram", "objects": [], "arrows": [], "animation_steps": []},
+            "key_points": ["Ask about the current chapter", "Stay focused on one topic"],
+            "analogy": "It's like trying to find a book in a library with no shelves.",
+            "quiz": None
+        }
+
     # 2. Build the STRICT Guardrail Prompt with RESTORED VISUAL RULES
     prompt = f"""
     ROLE: Grade 6-10 ADHD Study Mentor (DOPAMINE-OPTIMIZED).
@@ -168,7 +189,32 @@ def get_prism_content_from_db(user_query: str, student_level: str, subject: str,
         elif "```" in text_response:
             text_response = text_response.split("```")[1].split("```")[0].strip()
         
-        return json.loads(text_response)
+        ai_data = json.loads(text_response)
+        # Grounding check: Ensure response is based on context
+        context_words = set(word.lower() for word in context.split() if len(word) > 3)
+        response_text = text_response.lower()
+        response_words = set(word.lower() for word in response_text.split() if len(word) > 3)
+        grounded = bool(context_words & response_words)
+        if not grounded:
+            logging.warning("Gemini output not grounded in retrieved context. Rejecting off-topic answer.")
+            return {
+                "title": "I Don't Know",
+                "flashcards": [
+                    {
+                        "title": "Unrelated Answer",
+                        "bullet_points": [
+                            "The generated response doesn't match the available information.",
+                            "Please ask a question related to the current topic."
+                        ]
+                    }
+                ],
+                "dopamine_hook": "Sticking to the topic helps us learn better! 🎯",
+                "visual": {"type": "flow_diagram", "objects": [], "arrows": [], "animation_steps": []},
+                "key_points": ["Focus on the chapter", "Ask specific questions"],
+                "analogy": "Like answering a math question with history facts.",
+                "quiz": None
+            }
+        return ai_data
     except Exception as parse_error:
         logging.error(f"Failed to parse Gemini output: {parse_error}\nRaw Text: {response.text}")
         return {
