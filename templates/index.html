@@ -410,6 +410,7 @@
         <div id="gradeButtons" class="subject-grid">
           <p class="text-muted">Loading grades...</p>
         </div>
+        <button class="btn-subject" id="byomButton" style="background: var(--primary-green); color: white; margin-top: 20px;">BYOM: Upload PDF</button>
       </div>
 
       <div id="phase1b" class="phase text-center">
@@ -429,6 +430,19 @@
             <option value="">Choose a chapter...</option>
           </select>
           <button id="startLearningBtn" class="btn btn-ask" style="width: 300px;" disabled>Start Learning</button>
+        </div>
+      </div>
+
+      <div id="phase-byom" class="phase text-center">
+        <div style="height: 80px"></div>
+        <h2 style="color: var(--primary-blue)">Upload Your PDF</h2>
+        <p class="text-muted" style="font-size: 1.2rem">
+          Upload a PDF (max 15 pages) to chat with your own material.
+        </p>
+        <div class="d-flex flex-column align-items-center gap-3">
+          <input type="file" id="byomFileInput" accept=".pdf" class="form-control" style="width: 300px;">
+          <button id="uploadByomBtn" class="btn btn-ask" style="width: 300px;">Upload & Process</button>
+          <div id="byomLoader" class="text-muted" style="display: none;">Processing PDF... Please wait.</div>
         </div>
       </div>
 
@@ -586,6 +600,52 @@
           document.getElementById("gradeButtons").innerHTML =
             "<p class='text-danger'>Cannot connect to AI Backend.</p>";
         }
+
+        // BYOM Button Handler
+        document.getElementById("byomButton").onclick = () => switchPhase("phase-byom");
+
+        // BYOM Upload Handler
+        document.getElementById("uploadByomBtn").onclick = async () => {
+          const fileInput = document.getElementById("byomFileInput");
+          const file = fileInput.files[0];
+          if (!file) {
+            alert("Please select a PDF file.");
+            return;
+          }
+          if (!file.name.toLowerCase().endsWith('.pdf')) {
+            alert("Only PDF files are allowed.");
+            return;
+          }
+
+          const loader = document.getElementById("byomLoader");
+          loader.style.display = "block";
+          document.getElementById("uploadByomBtn").disabled = true;
+
+          const formData = new FormData();
+          formData.append("file", file);
+
+          try {
+            const response = await fetch(`${API_URL}/upload-byom`, {
+              method: "POST",
+              body: formData,
+            });
+            const result = await response.json();
+            if (response.ok) {
+              alert(result.message);
+              currentGrade = "BYOM";
+              currentSubject = "BYOM";
+              currentChapter = "Uploaded Document";
+              loadLevelTest("BYOM");
+            } else {
+              alert(result.detail || "Upload failed.");
+            }
+          } catch (e) {
+            alert("Upload failed. Please try again.");
+          } finally {
+            loader.style.display = "none";
+            document.getElementById("uploadByomBtn").disabled = false;
+          }
+        };
       };
 
       async function loadSubjects(grade) {

@@ -49,61 +49,67 @@ def get_prism_content_from_db(user_query: str, student_level: str, grade: str, s
 
     # 2. Retrieve Context from Vector DB (Strict Filtering with Graceful Degradation)
     try:
-        # First attempt: Exact match on grade, subject, and chapter
-        logging.info(f"Querying ChromaDB: grade={formatted_grade}, subject={formatted_subject}, chapter={chapter}")
-        results = collection.query(
-            query_texts=[user_query], 
-            n_results=5,  # Increased to 5 for adequate context
-            where={
-                "$and": [
-                    {"grade": {"$eq": formatted_grade}},
-                    {"subject": {"$eq": formatted_subject}},
-                    {"chapter_name": {"$eq": chapter}}
-                ]
-            }
-        )
-        logging.info(f"Exact match results: {len(results['documents'][0]) if results['documents'] else 0} chunks")
-
-        # If no results, try normalized chapter name match
-        if not results['documents'] or not results['documents'][0]:
-            logging.info(f"No exact chapter match found for '{chapter}', trying normalized chapter lookup.")
+        if grade == "BYOM":
+            # For BYOM, query without filters since metadata may vary
+            logging.info(f"Querying BYOM ChromaDB for user_query: {user_query}")
+            results = collection.query(query_texts=[user_query], n_results=5)
+            logging.info(f"BYOM query results: {len(results['documents'][0]) if results['documents'] else 0} chunks")
+        else:
+            # First attempt: Exact match on grade, subject, and chapter
+            logging.info(f"Querying ChromaDB: grade={formatted_grade}, subject={formatted_subject}, chapter={chapter}")
             results = collection.query(
                 query_texts=[user_query], 
-                n_results=5,
+                n_results=5,  # Increased to 5 for adequate context
                 where={
                     "$and": [
                         {"grade": {"$eq": formatted_grade}},
                         {"subject": {"$eq": formatted_subject}},
-                        {"chapter_name_normalized": {"$eq": normalized_chapter}}
+                        {"chapter_name": {"$eq": chapter}}
                     ]
                 }
             )
-            logging.info(f"Normalized chapter results: {len(results['documents'][0]) if results['documents'] else 0} chunks")
+            logging.info(f"Exact match results: {len(results['documents'][0]) if results['documents'] else 0} chunks")
 
-        # If still no results, fallback to grade and subject only
-        if not results['documents'] or not results['documents'][0]:
-            logging.info(f"No chapter-level match found, falling back to grade and subject for Grade: {formatted_grade}, Subject: {formatted_subject}")
-            results = collection.query(
-                query_texts=[user_query], 
-                n_results=5,
-                where={
-                    "$and": [
-                        {"grade": {"$eq": formatted_grade}},
-                        {"subject": {"$eq": formatted_subject}}
-                    ]
-                }
-            )
-            logging.info(f"Grade+subject fallback results: {len(results['documents'][0]) if results['documents'] else 0} chunks")
+            # If no results, try normalized chapter name match
+            if not results['documents'] or not results['documents'][0]:
+                logging.info(f"No exact chapter match found for '{chapter}', trying normalized chapter lookup.")
+                results = collection.query(
+                    query_texts=[user_query], 
+                    n_results=5,
+                    where={
+                        "$and": [
+                            {"grade": {"$eq": formatted_grade}},
+                            {"subject": {"$eq": formatted_subject}},
+                            {"chapter_name_normalized": {"$eq": normalized_chapter}}
+                        ]
+                    }
+                )
+                logging.info(f"Normalized chapter results: {len(results['documents'][0]) if results['documents'] else 0} chunks")
 
-        # Final fallback: grade-only retrieval if subject metadata is inconsistent
-        if not results['documents'] or not results['documents'][0]:
-            logging.info(f"No grade+subject results found, falling back to grade only for Grade: {formatted_grade}")
-            results = collection.query(
-                query_texts=[user_query], 
-                n_results=5,
-                where={"grade": {"$eq": formatted_grade}}
-            )
-            logging.info(f"Grade-only fallback results: {len(results['documents'][0]) if results['documents'] else 0} chunks")
+            # If still no results, fallback to grade and subject only
+            if not results['documents'] or not results['documents'][0]:
+                logging.info(f"No chapter-level match found, falling back to grade and subject for Grade: {formatted_grade}, Subject: {formatted_subject}")
+                results = collection.query(
+                    query_texts=[user_query], 
+                    n_results=5,
+                    where={
+                        "$and": [
+                            {"grade": {"$eq": formatted_grade}},
+                            {"subject": {"$eq": formatted_subject}}
+                        ]
+                    }
+                )
+                logging.info(f"Grade+subject fallback results: {len(results['documents'][0]) if results['documents'] else 0} chunks")
+
+            # Final fallback: grade-only retrieval if subject metadata is inconsistent
+            if not results['documents'] or not results['documents'][0]:
+                logging.info(f"No grade+subject results found, falling back to grade only for Grade: {formatted_grade}")
+                results = collection.query(
+                    query_texts=[user_query], 
+                    n_results=5,
+                    where={"grade": {"$eq": formatted_grade}}
+                )
+                logging.info(f"Grade-only fallback results: {len(results['documents'][0]) if results['documents'] else 0} chunks")
 
         # Validation: Ensure we have actual content
         if not results['documents'] or not results['documents'][0] or not any(chunk.strip() for chunk in results['documents'][0]):
