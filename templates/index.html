@@ -425,6 +425,11 @@
         <div id="gradeButtons" class="subject-grid">
           <p class="text-muted">Loading grades...</p>
         </div>
+        <div style="margin-top: 25px;">
+          <button id="byomButton" class="btn-subject" style="background: var(--primary-green); color: white; border-color: var(--primary-green);">
+            BYOM: Upload PDF
+          </button>
+        </div>
       </div>
 
       <div id="phase1b" class="phase text-center">
@@ -440,6 +445,26 @@
           What are we focusing on today?
         </p>
         <div id="chapterButtons" class="subject-grid"></div>
+      </div>
+
+      <div id="phase-byom" class="phase text-center">
+        <div style="height: 80px"></div>
+        <h2 style="color: var(--primary-blue)">Bring Your Own Material</h2>
+        <p class="text-muted" style="font-size: 1.2rem">
+          Upload a PDF and let PRISM learn from your own content.
+        </p>
+        <div class="level-q-container" style="max-width: 620px; margin: 0 auto;">
+          <input type="file" id="byomFileInput" accept=".pdf" class="form-control" style="margin-bottom: 1rem;" />
+          <button id="uploadByomBtn" class="btn-subject" style="background: var(--primary-green); color: white; border-color: var(--primary-green);">
+            Upload & Process
+          </button>
+          <div id="byomLoader" style="display: none; margin-top: 18px; color: var(--text-soft);">
+            <i class="fas fa-circle-notch fa-spin me-2"></i> Processing your PDF...
+          </div>
+          <p class="text-muted" style="margin-top: 1rem; font-size: 0.95rem;">
+            Max 15 pages. The uploaded document will be used for this learning session.
+          </p>
+        </div>
       </div>
 
       <div id="phase2" class="phase text-center">
@@ -582,6 +607,14 @@
             btn.onclick = () => loadSubjects(grade);
             container.appendChild(btn);
           });
+          const byomButton = document.getElementById("byomButton");
+          if (byomButton) {
+            byomButton.onclick = () => switchPhase("phase-byom");
+          }
+          const uploadByomBtn = document.getElementById("uploadByomBtn");
+          if (uploadByomBtn) {
+            uploadByomBtn.onclick = uploadByomDocument;
+          }
         } catch (e) {
           document.getElementById("gradeButtons").innerHTML =
             "<p class='text-danger'>Cannot connect to AI Backend.</p>";
@@ -699,6 +732,50 @@
           block.appendChild(btn);
         });
         container.appendChild(block);
+      }
+
+      async function uploadByomDocument() {
+        const fileInput = document.getElementById("byomFileInput");
+        const file = fileInput?.files?.[0];
+        if (!file) {
+          alert("Please choose a PDF file to upload.");
+          return;
+        }
+        if (!file.name.toLowerCase().endsWith(".pdf")) {
+          alert("Only PDF files are supported. Please upload a PDF.");
+          return;
+        }
+
+        const uploadButton = document.getElementById("uploadByomBtn");
+        const loader = document.getElementById("byomLoader");
+        uploadButton.disabled = true;
+        loader.style.display = "block";
+
+        try {
+          const formData = new FormData();
+          formData.append("file", file);
+
+          const response = await fetch(`${API_URL}/upload-byom`, {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || errorData.error || "Upload failed.");
+          }
+
+          await response.json();
+          currentGrade = "BYOM";
+          currentSubject = "BYOM";
+          currentChapter = "Uploaded Document";
+          loadLevelTest("BYOM");
+        } catch (error) {
+          alert(`Upload failed: ${error.message}`);
+        } finally {
+          loader.style.display = "none";
+          uploadButton.disabled = false;
+        }
       }
 
       async function submitLevelTest() {

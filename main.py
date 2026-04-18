@@ -3,7 +3,7 @@ import statistics
 import chromadb
 import json
 import logging
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, FileResponse
@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
+from byom_handler import process_byom_pdf
 from generator import get_prism_content_from_db
 
 logging.basicConfig(level=logging.INFO)
@@ -39,6 +40,14 @@ try:
     collection = client_db.get_collection(name="prism_curriculum")
 except Exception:
     collection = None
+
+try:
+    collection_byom = client_db.get_collection(name="prism_byom")
+except Exception:
+    try:
+        collection_byom = client_db.create_collection(name="prism_byom")
+    except Exception:
+        collection_byom = None
 
 class LevelAnswers(BaseModel):
     answers: list[int]
@@ -79,7 +88,54 @@ async def get_chapters(grade: str = Query(...), subject: str = Query(...)):
 
 @app.get("/level-test")
 async def get_level_test(subject: str = Query(...)):
-    if not supabase: return {"subject": subject, "questions": []}
+    if subject.upper() == "BYOM":
+        return {
+            "subject": "BYOM",
+            "questions": [
+                {
+                    "question": "What type of content helps you learn best: diagrams, definitions, stories, or examples?",
+                    "options": [
+                        "A. Diagrams",
+                        "B. Definitions",
+                        "C. Stories",
+                        "D. Examples"
+                    ],
+                    "difficulty": 2
+                },
+                {
+                    "question": "When you see a new topic, do you prefer a short summary or step-by-step notes?",
+                    "options": [
+                        "A. Short summary",
+                        "B. Step-by-step notes",
+                        "C. A story",
+                        "D. A diagram"
+                    ],
+                    "difficulty": 2
+                },
+                {
+                    "question": "If something feels too hard, would you rather get a simpler hint or a concrete example?",
+                    "options": [
+                        "A. Simpler hint",
+                        "B. Concrete example",
+                        "C. Longer explanation",
+                        "D. Skip it",
+                    ],
+                    "difficulty": 2
+                },
+                {
+                    "question": "Do you feel more confident when the answer is shown with a quick list or a short story?",
+                    "options": [
+                        "A. Quick list",
+                        "B. Short story",
+                        "C. Diagram only",
+                        "D. No preference"
+                    ],
+                    "difficulty": 2
+                }
+            ]
+        }
+    if not supabase:
+        return {"subject": subject, "questions": []}
     res = supabase.table("calibration_questions").select("*").eq("subject", subject).execute()
     if not res.data:
         return JSONResponse(status_code=404, content={"error": "No calibration questions found."})
@@ -110,18 +166,50 @@ async def get_session_stats():
 
 @app.get("/ask")
 async def ask_assistant(
-    user_query: str = Query(...), 
+    user_query: str = Query(...),
     student_level: str = Query("Intermediate"),
-    subject: str = Query(...),   
-    chapter: str = Query(...)    
+    subject: str = Query(...),
+    chapter: str = Query(...),
+    grade: str = Query(None),
 ):
-    if not collection:
+    active_collection = collection
+    bypass_metadata = False
+    if grade and grade.upper() == "BYOM":
+        active_collection = collection_byom
+        bypass_metadata = True
+    elif subject.upper() == "BYOM":
+        active_collection = collection_byom
+        bypass_metadata = True
+
+    if not active_collection:
         return JSONResponse(status_code=500, content={"error": "Vector DB not initialized."})
+
     try:
-        ai_data = get_prism_content_from_db(user_query, student_level, subject, chapter, collection)
+        ai_data = get_prism_content_from_db(
+            user_query,
+            student_level,
+            subject,
+            chapter,
+            active_collection,
+            bypass_metadata=bypass_metadata,
+        )
         return JSONResponse(content=ai_data)
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.post("/upload-byom")
+async def upload_byom(file: UploadFile = File(...)):
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported for BYOM uploads.")
+    try:
+        file_bytes = await file.read()
+        chunk_count = process_byom_pdf(file_bytes)
+        return {"message": "BYOM document uploaded successfully.", "chunks": chunk_count}
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        logging.error(f"BYOM upload failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process BYOM PDF. Please try again.")
 
 # --- STATIC FILES ---
 

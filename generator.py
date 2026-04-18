@@ -8,7 +8,7 @@ load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 client_ai = genai.Client(api_key=API_KEY)
 
-def get_prism_content_from_db(user_query: str, student_level: str, subject: str, chapter: str, collection):
+def get_prism_content_from_db(user_query: str, student_level: str, subject: str, chapter: str, collection, bypass_metadata: bool = False):
     """
     Queries ChromaDB for context, enforces syllabus bounds, and generates ADHD-friendly content.
     """
@@ -45,25 +45,28 @@ def get_prism_content_from_db(user_query: str, student_level: str, subject: str,
         }
     }
 
-    # 1. Retrieve Context from Vector DB (Strict Filtering)
+    # 1. Retrieve Context from Vector DB
     try:
-        results = collection.query(
-            query_texts=[user_query], 
-            n_results=2,
-            where={
-                "$and": [
-                    {"subject": {"$eq": subject.lower().replace(" ", "_")}},
-                    {"chapter_name": {"$eq": chapter}}
-                ]
-            }
-        )
-        
+        if bypass_metadata:
+            results = collection.query(query_texts=[user_query], n_results=2)
+        else:
+            results = collection.query(
+                query_texts=[user_query],
+                n_results=2,
+                where={
+                    "$and": [
+                        {"subject": {"$eq": subject.lower().replace(" ", "_")}},
+                        {"chapter_name": {"$eq": chapter}}
+                    ]
+                }
+            )
+
         # Guardrail: If no context is found, block the AI and redirect the user
-        if not results['documents'] or not results['documents'][0]:
+        if not results["documents"] or not results["documents"][0]:
             logging.info("No context found. Triggering ADHD redirect.")
             return redirect_response
-            
-        context = " ".join(results['documents'][0])
+
+        context = " ".join(results["documents"][0])
     except Exception as e:
         logging.error(f"ChromaDB Query Error: {e}")
         return redirect_response 
