@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRISM | Sign In</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-warm: #FDFCF8;
+            --primary-blue: #7F9FBA;
+            --primary-blue-dark: #6385a1;
+            --primary-green: #8FB59E;
+            --text-dark: #2D3748;
+            --text-soft: #718096;
+            --card-shadow: 0 20px 40px -10px rgba(100, 120, 140, 0.15);
+            --input-border: #E2E8F0;
+            --error-red: #E53E3E;
+            --success-green: #38A169;
+        }
+
+        body {
+            background-color: var(--bg-warm);
+            background-image: radial-gradient(rgba(113, 128, 150, 0.15) 1px, transparent 1px);
+            background-size: 24px 24px;
+            font-family: 'Nunito', sans-serif;
+            color: var(--text-dark);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            line-height: 1.5;
+        }
+
+        /* ── Background blobs ── */
+        .bg-blob {
+            position: fixed; border-radius: 50%; filter: blur(80px);
+            opacity: 0.45; pointer-events: none; z-index: 0;
+        }
+        .blob-1 { width: 420px; height: 420px; background: var(--primary-blue); top: -100px; left: -100px; animation: blobDrift 45s ease-in-out infinite alternate; }
+        .blob-2 { width: 340px; height: 340px; background: var(--primary-green); bottom: -80px; right: -80px; animation: blobDrift 55s ease-in-out infinite alternate-reverse; }
+        
+        @keyframes blobDrift {
+            0%   { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(30px, 20px) scale(1.06); }
+        }
+
+        /* ── Card Container ── */
+        .card-wrap { position: relative; z-index: 10; width: 100%; max-width: 440px; }
+
+        .prism-card {
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+            border-radius: 28px; padding: 32px 36px;
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: var(--card-shadow);
+            animation: cardSlideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+            min-height: 310px;
+        }
+
+        @keyframes cardSlideIn {
+            from { opacity: 0; transform: translateY(30px) scale(0.96); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* ── Header: Logo ── */
+        .logo-text { font-size: 1.8rem; font-weight: 800; letter-spacing: 2px; color: var(--text-dark); }
+        .logo-sub { font-size: 0.85rem; color: var(--text-soft); font-weight: 700; letter-spacing: 0.3px; }
+
+        /* ── TRUE 3D ROTATING PRISM MASCOT (New Bright Gradient) ── */
+        .prism-mascot-container {
+            width: 56px;
+            height: 56px;
+            perspective: 800px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .prism-shadow {
+            position: absolute;
+            width: 30px;
+            height: 8px;
+            background: rgba(142, 181, 240, 0.5); /* Soft blue shadow */
+            border-radius: 50%;
+            filter: blur(4px);
+            transform: translateY(24px);
+            z-index: 0;
+        }
+
+        .prism-core-light {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            /* Glow matches the new bright blue/mint gradient */
+            box-shadow: 0 0 15px rgba(174, 224, 206, 0.8), 0 0 30px rgba(142, 181, 240, 0.9);
+            z-index: 1;
+            animation: corePulse 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes corePulse {
+            0% { transform: scale(0.85); opacity: 0.8; }
+            100% { transform: scale(1.2); opacity: 1; }
+        }
+
+        .prism-cube {
+            width: 32px;
+            height: 32px;
+            position: relative;
+            transform-style: preserve-3d; 
+            z-index: 2;
+            animation: rotateCore 12s infinite linear; 
+        }
+        
+        .cube-face {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            /* Thicker, softer white border to match the image */
+            
+            border-radius: 3px;
+            backface-visibility: visible; 
+        }
+        
+        /* The beautiful soft blue to mint gradient from the image. 
+           Direction is bottom-left to top-right. */
+        .face-front  { transform: translateZ(16px); background: linear-gradient(to top right, rgba(142, 181, 240, 0.85), rgba(174, 224, 206, 0.85)); } 
+        .face-back   { transform: rotateY(180deg) translateZ(16px); background: linear-gradient(to top right, rgba(142, 181, 240, 0.85), rgba(174, 224, 206, 0.85)); } 
+        
+        /* Sides (slightly more opaque to simulate shadow depth) */
+        .face-right  { transform: rotateY(90deg) translateZ(16px); background: linear-gradient(to top right, rgba(122, 161, 220, 0.95), rgba(154, 204, 186, 0.95)); } 
+        .face-left   { transform: rotateY(-90deg) translateZ(16px); background: linear-gradient(to top right, rgba(122, 161, 220, 0.95), rgba(154, 204, 186, 0.95)); } 
+        
+        /* Top/Bottom (slightly lighter/transparent for highlight) */
+        .face-top    { transform: rotateX(90deg) translateZ(16px); background: linear-gradient(to top right, rgba(172, 211, 255, 0.75), rgba(204, 254, 236, 0.75)); } 
+        .face-bottom { transform: rotateX(-90deg) translateZ(16px); background: linear-gradient(to top right, rgba(172, 211, 255, 0.75), rgba(204, 254, 236, 0.75)); }
+
+        @keyframes rotateCore {
+            0%   { transform: rotateX(-20deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: rotateX(-20deg) rotateY(360deg) rotateZ(360deg); }
+        }
+
+        /* ── Flow Steps ── */
+        .flow-step { display: none; animation: fadeUp 0.3s ease both; }
+        .flow-step.active { display: block; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Typography for steps */
+        .step-heading { font-size: 1.25rem; font-weight: 800; color: var(--text-dark); margin-bottom: 2px; line-height: 1.2; }
+        .step-subtext { font-size: 0.95rem; color: var(--text-soft); font-weight: 700; line-height: 1.2; }
+
+        /* ── Back Button ── */
+        .btn-back {
+            background: none; border: none; color: var(--text-soft);
+            font-size: 1.2rem; padding: 4px 8px; margin-left: -8px;
+            cursor: pointer; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-radius: 8px;
+        }
+        .btn-back:hover { color: var(--text-dark); background: rgba(255,255,255,0.5); transform: translateX(-2px); }
+
+        /* ── Fields & Inputs ── */
+        .field label { font-size: 0.85rem; font-weight: 700; color: var(--text-soft); margin-bottom: 4px; letter-spacing: 0.2px; }
+        .field-inner { position: relative; display: flex; align-items: center; }
+        
+        .field-icon { 
+            position: absolute; left: 16px; color: #CBD5E0; font-size: 1rem; 
+            pointer-events: none; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            z-index: 2;
+        }
+        
+        .field input {
+            width: 100%; padding: 12px 14px 12px 42px;
+            border: 2px solid var(--input-border); border-radius: 12px;
+            font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 600;
+            color: var(--text-dark); background: white; outline: none; 
+            transition: all 0.25s cubic-bezier(0.215, 0.610, 0.355, 1);
+        }
+        .field input::placeholder { color: #A0AEC0; font-weight: 600; }
+        
+        /* The Prism Focus Ring */
+        .field input:focus { 
+            border-color: transparent; 
+            background-image: linear-gradient(white, white), linear-gradient(135deg, var(--primary-blue), #d4b8e0, var(--primary-green));
+            background-origin: border-box;
+            background-clip: padding-box, border-box;
+            box-shadow: 0 6px 15px rgba(127,159,186,0.15); 
+            transform: translateY(-1px);
+        }
+        .field-inner:focus-within .field-icon { 
+            color: var(--primary-blue); 
+            transform: scale(1.15); 
+        }
+
+        .pw-toggle { position: absolute; right: 14px; background: none; border: none; cursor: pointer; color: #CBD5E0; font-size: 0.95rem; transition: color 0.2s; z-index: 2;}
+        .pw-toggle:hover { color: var(--primary-blue); }
+
+        .field-msg { font-size: 0.8rem; font-weight: 700; margin-top: 4px; min-height: 18px; padding-left: 2px; transition: all 0.2s; }
+        .field-msg.error { color: var(--error-red); }
+        .field-msg.ok    { color: var(--success-green); }
+
+        /* ── Satisfying Buttons ── */
+        .prism-btn {
+            width: 100%; padding: 12px; 
+            background: linear-gradient(135deg, #8ba8c1, var(--primary-blue)); 
+            color: white; border: none;
+            border-radius: 12px; font-family: 'Nunito', sans-serif; font-size: 1.05rem; font-weight: 800;
+            cursor: pointer; 
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            box-shadow: 0 6px 16px rgba(127,159,186,0.25), inset 0 2px 0 rgba(255,255,255,0.15);
+            position: relative; overflow: hidden;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .prism-btn:hover { 
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-dark));
+            transform: translateY(-2px); 
+            box-shadow: 0 8px 20px rgba(127,159,186,0.35), inset 0 2px 0 rgba(255,255,255,0.15); 
+        }
+        .prism-btn:active { 
+            transform: translateY(2px) scale(0.97); 
+            box-shadow: 0 2px 8px rgba(127,159,186,0.2); 
+        }
+        .prism-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; box-shadow: none; }
+        
+        /* The Light Sweep Animation */
+        .prism-btn::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -150%;
+            width: 150%; height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(143,181,158,0.3) 25%, 
+                rgba(255,255,255,0.6) 50%, 
+                rgba(212,184,224,0.3) 75%, 
+                transparent
+            );
+            transform: skewX(-25deg);
+            z-index: 1;
+            pointer-events: none;
+        }
+        .prism-btn.prism-animate::after {
+            animation: prismSweep 0.55s ease-out forwards;
+        }
+        @keyframes prismSweep {
+            0% { left: -150%; }
+            100% { left: 150%; }
+        }
+
+        /* ── Google Button ── */
+        .btn-google {
+            width: 100%; padding: 10px; background: white; border: 2px solid var(--input-border);
+            border-radius: 12px; font-family: 'Nunito', sans-serif; font-size: 0.95rem; font-weight: 700;
+            color: var(--text-dark); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .btn-google:hover { 
+            border-color: var(--primary-blue); 
+            box-shadow: 0 4px 12px rgba(127,159,186,0.1); 
+            transform: translateY(-2px); 
+        }
+        .btn-google:active { transform: scale(0.97); }
+        .google-icon { width: 18px; height: 18px; }
+
+        .divider { display: flex; align-items: center; gap: 12px; color: #CBD5E0; font-size: 0.85rem; font-weight: 700; margin: 16px 0; }
+        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--input-border); }
+
+        .forgot-link-text { font-size: 0.85rem; font-weight: 700; color: var(--primary-blue); text-decoration: none; }
+        .forgot-link-text:hover { opacity: 0.8; text-decoration: underline; }
+
+        /* ── Password Strength ── */
+        .strength-bar-wrap { display: none; margin-top: 8px; gap: 6px; align-items: center; }
+        .strength-bar-wrap.visible { display: flex; }
+        .strength-seg { flex: 1; height: 4px; border-radius: 99px; background: #E2E8F0; transition: background 0.4s ease; }
+
+        /* Muted Terms Text */
+        .terms-note { font-size: 0.75rem; color: #A0AEC0; font-weight: 600; line-height: 1.4; margin-top: 14px; }
+        .terms-note a { color: var(--primary-blue); text-decoration: none; }
+        .terms-note a:hover { text-decoration: underline; }
+
+        /* ── Toast ── */
+        .toast-notification {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px);
+            background: var(--text-dark); color: white; padding: 12px 24px; border-radius: 14px;
+            font-size: 0.95rem; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            z-index: 999; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s; opacity: 0; pointer-events: none;
+        }
+        .toast-notification.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast-notification.success { background: #276749; }
+        .toast-notification.error   { background: #9b2c2c; }
+
+        @media (max-width: 400px) { .prism-card { padding: 24px; } }
+    </style>
+</head>
+<body>
+
+    <div class="bg-blob blob-1"></div>
+    <div class="bg-blob blob-2"></div>
+
+    <div class="container p-2 card-wrap">
+        <div class="prism-card">
+
+            <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+                <div>
+                    <span class="logo-text d-block lh-1">PRISM</span>
+                    <span class="logo-sub d-block mt-1 lh-1">Your AI Learning Companion</span>
+                </div>
+                <div class="prism-mascot-container" title="PRISM Core Active">
+                    <div class="prism-shadow"></div>
+                    <div class="prism-core-light"></div>
+                    <div class="prism-cube">
+                        <div class="cube-face face-front"></div>
+                        <div class="cube-face face-back"></div>
+                        <div class="cube-face face-right"></div>
+                        <div class="cube-face face-left"></div>
+                        <div class="cube-face face-top"></div>
+                        <div class="cube-face face-bottom"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flow-step active" id="step-email">
+                <div class="mb-4">
+                    <div class="step-heading">Let's get started.</div>
+                    <div class="step-subtext">Enter your email to continue.</div>
+                </div>
+
+                <div class="field mb-3">
+                    <div class="field-inner">
+                        <input type="email" id="auth-email" placeholder="e.g. hello@prism.com" autocomplete="email" oninput="clearError('auth-email-msg')">
+                        <i class="fas fa-envelope field-icon"></i>
+                    </div>
+                    <div class="field-msg" id="auth-email-msg"></div>
+                </div>
+
+                <button class="prism-btn mb-2" id="btn-email-next" onclick="handleEmailNext(event)">Continue →</button>
+                
+                <div class="divider">or</div>
+                
+                <button class="btn-google" onclick="handleGoogle()">
+                    <svg class="google-icon" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+                        <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+                        <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                    </svg>
+                    Continue with Google
+                </button>
+            </div>
+
+            <div class="flow-step" id="step-login">
+                <div class="d-flex align-items-center mb-4 gap-2">
+                    <button class="btn-back" onclick="goBack()" aria-label="Go back"><i class="fas fa-arrow-left"></i></button>
+                    <div>
+                        <div class="step-heading">Welcome back.</div>
+                        <div class="step-subtext" id="display-login-email"></div>
+                    </div>
+                </div>
+
+                <div class="field mb-4">
+                    <div class="d-flex justify-content-between align-items-end mb-1">
+                        <label for="login-pw" class="mb-0">Password</label>
+                        <a href="#" class="forgot-link-text" onclick="showToast('A reset link is on its way!', 'success'); return false;">Forgot?</a>
+                    </div>
+                    <div class="field-inner">
+                        <input type="password" id="login-pw" placeholder="Enter your password" autocomplete="current-password" oninput="clearError('login-pw-msg')">
+                        <i class="fas fa-lock field-icon"></i>
+                        <button class="pw-toggle" type="button" onclick="togglePw('login-pw', this)"><i class="fas fa-eye"></i></button>
+                    </div>
+                    <div class="field-msg" id="login-pw-msg"></div>
+                </div>
+
+                <button class="prism-btn mb-1" id="btn-login" onclick="handleLogin(event)">Sign In →</button>
+            </div>
+
+            <div class="flow-step" id="step-signup">
+                <div class="d-flex align-items-center mb-4 gap-2">
+                    <button class="btn-back" onclick="goBack()" aria-label="Go back"><i class="fas fa-arrow-left"></i></button>
+                    <div>
+                        <div class="step-heading">Create Account.</div>
+                        <div class="step-subtext" id="display-signup-email"></div>
+                    </div>
+                </div>
+
+                <div class="field mb-3">
+                    <label for="su-name">First name</label>
+                    <div class="field-inner">
+                        <input type="text" id="su-name" placeholder="What should we call you?" autocomplete="given-name" oninput="clearError('su-name-msg')">
+                        <i class="fas fa-user field-icon"></i>
+                    </div>
+                    <div class="field-msg" id="su-name-msg"></div>
+                </div>
+
+                <div class="field mb-4">
+                    <label for="su-pw">Create a password</label>
+                    <div class="field-inner">
+                        <input type="password" id="su-pw" placeholder="Enter a secure password" autocomplete="new-password" oninput="updateStrength(); clearError('su-pw-msg')">
+                        <i class="fas fa-lock field-icon"></i>
+                        <button class="pw-toggle" type="button" onclick="togglePw('su-pw', this)"><i class="fas fa-eye"></i></button>
+                    </div>
+                    <div class="strength-bar-wrap" id="strength-bar">
+                        <div class="strength-seg" id="seg-1"></div>
+                        <div class="strength-seg" id="seg-2"></div>
+                        <div class="strength-seg" id="seg-3"></div>
+                        <div class="strength-seg" id="seg-4"></div>
+                    </div>
+                    <div class="field-msg" id="su-pw-msg"></div>
+                </div>
+
+                <button class="prism-btn mb-1" id="btn-signup" onclick="handleSignup(event)">Start Learning →</button>
+                
+                <p class="terms-note text-center mb-0">By creating an account, you agree to PRISM's <a href="#">Terms</a>.</p>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="toast-notification" id="toast" role="alert" aria-live="polite"></div>
+
+    <script>
+        // HARDCODED DATABASE SIMULATION
+        const EXISTING_USER_EMAIL = "hello@prism.com"; 
+        let globalEmail = "";
+
+        function showStep(stepId) {
+            document.querySelectorAll('.flow-step').forEach(el => el.classList.remove('active'));
+            document.getElementById(stepId).classList.add('active');
+        }
+
+        function goBack() {
+            showStep('step-email');
+        }
+
+        /* ── Clears errors instantly when user starts typing again ── */
+        function clearError(msgId) {
+            const msgEl = document.getElementById(msgId);
+            msgEl.textContent = '';
+            msgEl.className = 'field-msg';
+        }
+
+        /* ── The Light Sweep Effect on Buttons ── */
+        function triggerPrismSweep(btn) {
+            if (!btn) return;
+            btn.classList.remove('prism-animate');
+            void btn.offsetWidth; 
+            btn.classList.add('prism-animate');
+            setTimeout(() => btn.classList.remove('prism-animate'), 600);
+        }
+
+        /* ── Unified Flow Logic ── */
+        function handleEmailNext(e) {
+            const btn = document.getElementById('btn-email-next');
+            const emailInput = document.getElementById('auth-email');
+            const email = emailInput.value.trim().toLowerCase();
+            
+            triggerPrismSweep(btn);
+
+            // Validation ONLY on submit click
+            if (!validateEmail(email).ok) { 
+                emailInput.focus(); 
+                return liveValidate('auth-email', 'auth-email-msg', validateEmail); 
+            }
+
+            globalEmail = email;
+            btn.disabled = true; btn.textContent = 'Checking...';
+            
+            setTimeout(() => {
+                btn.disabled = false; btn.textContent = 'Continue →';
+                
+                if (email === EXISTING_USER_EMAIL) {
+                    document.getElementById('display-login-email').textContent = globalEmail;
+                    showStep('step-login');
+                    setTimeout(() => document.getElementById('login-pw').focus(), 100);
+                } else {
+                    document.getElementById('display-signup-email').textContent = globalEmail;
+                    showStep('step-signup');
+                    setTimeout(() => document.getElementById('su-name').focus(), 100);
+                }
+            }, 500);
+        }
+
+        /* ── Validators ── */
+        function validateEmail(val) {
+            if (!val) return { ok: false, msg: '' };
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) ? { ok: true, msg: '' } : { ok: false, msg: 'Please enter a valid email' };
+        }
+
+        function validateName(val) {
+            if (!val) return { ok: false, msg: '' };
+            return val.trim().length >= 2 ? { ok: true, msg: '' } : { ok: false, msg: 'Needs at least 2 characters' };
+        }
+
+        function liveValidate(inputId, msgId, validatorFn) {
+            const val = document.getElementById(inputId).value;
+            const msgEl = document.getElementById(msgId);
+            const res = validatorFn(val);
+            msgEl.textContent = res.msg;
+            msgEl.className = 'field-msg ' + (res.ok ? 'ok' : (res.msg ? 'error' : ''));
+        }
+
+        /* ── Utilities ── */
+        function togglePw(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') { input.type = 'text'; icon.className = 'fas fa-eye-slash'; }
+            else { input.type = 'password'; icon.className = 'fas fa-eye'; }
+        }
+
+        function updateStrength() {
+            const pw = document.getElementById('su-pw').value;
+            const bar = document.getElementById('strength-bar');
+            const segs = [document.getElementById('seg-1'), document.getElementById('seg-2'), document.getElementById('seg-3'), document.getElementById('seg-4')];
+
+            if (!pw) { bar.classList.remove('visible'); return; }
+            bar.classList.add('visible');
+
+            let score = 0;
+            if (pw.length >= 8) score++;
+            if (/[A-Z]/.test(pw)) score++;
+            if (/[0-9]/.test(pw)) score++;
+            if (/[^A-Za-z0-9]/.test(pw)) score++;
+
+            const colors = ['#FC8181', '#F6AD55', '#68D391', '#48BB78'];
+            segs.forEach((s, i) => s.style.background = i < score ? colors[score - 1] : '#E2E8F0');
+        }
+
+        let toastTimer = null;
+        function showToast(msg, type = '') {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.className = 'toast-notification show ' + type;
+            clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.classList.remove('show'); }, 3200);
+        }
+
+        /* ── Final Submissions ── */
+        function handleLogin(e) {
+            const btn = document.getElementById('btn-login');
+            const pw = document.getElementById('login-pw').value;
+            
+            triggerPrismSweep(btn);
+
+            if (!pw) { 
+                document.getElementById('login-pw').focus(); 
+                document.getElementById('login-pw-msg').textContent = 'Password is required'; 
+                document.getElementById('login-pw-msg').className = 'field-msg error'; 
+                return; 
+            }
+
+            btn.disabled = true; btn.textContent = 'Syncing...';
+            setTimeout(() => { btn.disabled = false; btn.textContent = 'Sign In →'; showToast('Synced! Redirecting...', 'success'); }, 1200);
+        }
+
+        function handleSignup(e) {
+            const btn = document.getElementById('btn-signup');
+            const name = document.getElementById('su-name').value.trim();
+            const pw = document.getElementById('su-pw').value;
+            
+            triggerPrismSweep(btn);
+
+            if (name.length < 2) { document.getElementById('su-name').focus(); return liveValidate('su-name', 'su-name-msg', validateName); }
+            if (pw.length < 6) { 
+                document.getElementById('su-pw').focus(); 
+                document.getElementById('su-pw-msg').textContent = 'Min 6 characters'; 
+                document.getElementById('su-pw-msg').className = 'field-msg error'; 
+                return; 
+            }
+
+            btn.disabled = true; btn.textContent = 'Calibrating...';
+            setTimeout(() => { btn.disabled = false; btn.textContent = 'Start Learning →'; showToast(`Welcome to PRISM, ${name}!`, 'success'); }, 1200);
+        }
+
+        function handleGoogle() { showToast('Connecting with Google...', ''); }
+
+        /* ── Context-Aware Enter Key Support ── */
+        document.addEventListener('keydown', e => {
+            if (e.key !== 'Enter') return;
+            
+            if (document.getElementById('step-email').classList.contains('active')) {
+                handleEmailNext();
+            } else if (document.getElementById('step-login').classList.contains('active')) {
+                handleLogin();
+            } else if (document.getElementById('step-signup').classList.contains('active')) {
+                handleSignup();
+            }
+        });
+    </script>
+</body>
+</html>
