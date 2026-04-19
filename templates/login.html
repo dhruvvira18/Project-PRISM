@@ -424,8 +424,7 @@
     <div class="toast-notification" id="toast" role="alert" aria-live="polite"></div>
 
     <script>
-        // HARDCODED DATABASE SIMULATION
-        const EXISTING_USER_EMAIL = "hello@prism.com"; 
+        const API_URL = "";
         let globalEmail = "";
 
         function showStep(stepId) {
@@ -454,7 +453,7 @@
         }
 
         /* ── Unified Flow Logic ── */
-        function handleEmailNext(e) {
+        async function handleEmailNext(e) {
             const btn = document.getElementById('btn-email-next');
             const emailInput = document.getElementById('auth-email');
             const email = emailInput.value.trim().toLowerCase();
@@ -470,10 +469,19 @@
             globalEmail = email;
             btn.disabled = true; btn.textContent = 'Checking...';
             
-            setTimeout(() => {
+            try {
+                const res = await fetch(`${API_URL}/auth/check-email`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                });
+
+                if (!res.ok) throw new Error("Failed to check email");
+                const data = await res.json();
+
                 btn.disabled = false; btn.textContent = 'Continue →';
                 
-                if (email === EXISTING_USER_EMAIL) {
+                if (data.exists) {
                     document.getElementById('display-login-email').textContent = globalEmail;
                     showStep('step-login');
                     setTimeout(() => document.getElementById('login-pw').focus(), 100);
@@ -482,7 +490,10 @@
                     showStep('step-signup');
                     setTimeout(() => document.getElementById('su-name').focus(), 100);
                 }
-            }, 500);
+            } catch (error) {
+                btn.disabled = false; btn.textContent = 'Continue →';
+                showToast("Network error. Please try again.", "error");
+            }
         }
 
         /* ── Validators ── */
@@ -538,7 +549,7 @@
         }
 
         /* ── Final Submissions ── */
-        function handleLogin(e) {
+        async function handleLogin(e) {
             const btn = document.getElementById('btn-login');
             const pw = document.getElementById('login-pw').value;
             
@@ -552,10 +563,35 @@
             }
 
             btn.disabled = true; btn.textContent = 'Syncing...';
-            setTimeout(() => { btn.disabled = false; btn.textContent = 'Sign In →'; showToast('Synced! Redirecting...', 'success'); }, 1200);
+
+            try {
+                const res = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: globalEmail, password: pw })
+                });
+
+                if (!res.ok) {
+                    const error = await res.json();
+                    throw new Error(error.detail || "Login failed");
+                }
+
+                const data = await res.json();
+                localStorage.setItem('prism_user_id', data.id);
+                localStorage.setItem('prism_user_email', data.email);
+                localStorage.setItem('prism_user_level', data.grade);
+
+                btn.disabled = false; btn.textContent = 'Sign In →';
+                showToast('Synced! Redirecting...', 'success');
+                setTimeout(() => window.location.href = '/', 800);
+            } catch (err) {
+                btn.disabled = false; btn.textContent = 'Sign In →';
+                document.getElementById('login-pw-msg').textContent = err.message;
+                document.getElementById('login-pw-msg').className = 'field-msg error';
+            }
         }
 
-        function handleSignup(e) {
+        async function handleSignup(e) {
             const btn = document.getElementById('btn-signup');
             const name = document.getElementById('su-name').value.trim();
             const pw = document.getElementById('su-pw').value;
@@ -571,7 +607,32 @@
             }
 
             btn.disabled = true; btn.textContent = 'Calibrating...';
-            setTimeout(() => { btn.disabled = false; btn.textContent = 'Start Learning →'; showToast(`Welcome to PRISM, ${name}!`, 'success'); }, 1200);
+
+            try {
+                const res = await fetch(`${API_URL}/auth/signup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: globalEmail, password: pw, name: name })
+                });
+
+                if (!res.ok) {
+                    const error = await res.json();
+                    throw new Error(error.detail || "Signup failed");
+                }
+
+                const data = await res.json();
+                localStorage.setItem('prism_user_id', data.id);
+                localStorage.setItem('prism_user_email', data.email);
+                localStorage.setItem('prism_user_level', data.grade);
+
+                btn.disabled = false; btn.textContent = 'Start Learning →';
+                showToast(`Welcome to PRISM, ${name}!`, 'success');
+                setTimeout(() => window.location.href = '/', 800);
+            } catch (err) {
+                btn.disabled = false; btn.textContent = 'Start Learning →';
+                document.getElementById('su-pw-msg').textContent = err.message;
+                document.getElementById('su-pw-msg').className = 'field-msg error';
+            }
         }
 
         function handleGoogle() { showToast('Connecting with Google...', ''); }
