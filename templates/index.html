@@ -595,6 +595,21 @@
 
       // --- INITIALIZATION ---
       window.onload = async () => {
+        const userId = localStorage.getItem('prism_user_id');
+        if (!userId) {
+            window.location.href = '/login';
+            return;
+        }
+
+        currentLevel = localStorage.getItem('prism_user_level');
+        if (!currentLevel || currentLevel === "Pending") {
+            loadLevelTest();
+            return;
+        }
+
+        // Ensure UI starts on grade phase if calibration is already done
+        switchPhase("phase1a");
+
         try {
           const res = await fetch(`${API_URL}/grades`);
           const data = await res.json();
@@ -666,7 +681,8 @@
             btn.innerText = chap;
             btn.onclick = () => {
               currentChapter = chap;
-              loadLevelTest(subject);
+              document.getElementById("levelBadge").innerText = `${currentChapter} | Level: ${currentLevel}`;
+              switchPhase("phase3");
             };
             container.appendChild(btn);
           });
@@ -676,14 +692,12 @@
       }
 
       // --- LEVEL TEST ---
-      async function loadLevelTest(subject) {
+      async function loadLevelTest() {
         switchPhase("phase2");
         levelTestSelections = {};
         currentTestIndex = 0;
         try {
-          const res = await fetch(
-            `${API_URL}/level-test?subject=${encodeURIComponent(subject)}`,
-          );
+          const res = await fetch(`${API_URL}/level-test`);
           const data = await res.json();
           levelTestQuestions = data.questions;
 
@@ -723,7 +737,7 @@
           btn.className = "level-option";
           btn.innerText = opt.text;
           btn.onclick = () => {
-            levelTestSelections[currentTestIndex] = opt.difficulty;
+            levelTestSelections[currentTestIndex] = opt.difficulty || opt.correctness || 2;
             setTimeout(() => {
               currentTestIndex++;
               renderTestQuestion();
@@ -769,7 +783,8 @@
           currentGrade = "BYOM";
           currentSubject = "BYOM";
           currentChapter = "Uploaded Document";
-          loadLevelTest("BYOM");
+          document.getElementById("levelBadge").innerText = `${currentChapter} | Level: ${currentLevel}`;
+          switchPhase("phase3");
         } catch (error) {
           alert(`Upload failed: ${error.message}`);
         } finally {
@@ -781,6 +796,7 @@
       async function submitLevelTest() {
         const answersArr = Object.values(levelTestSelections);
         if (answersArr.length === 0) answersArr.push(2);
+
         try {
           const res = await fetch(`${API_URL}/calculate-level`, {
             method: "POST",
@@ -789,13 +805,24 @@
           });
           const data = await res.json();
           currentLevel = data.level || "Intermediate";
+
+          // Save to user profile via Auth endpoint
+          const userId = localStorage.getItem('prism_user_id');
+          if (userId) {
+              await fetch(`${API_URL}/auth/update-level`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ user_id: userId, level: currentLevel })
+              });
+              localStorage.setItem('prism_user_level', currentLevel);
+          }
         } catch (e) {
           currentLevel = "Intermediate";
         }
 
-        document.getElementById("levelBadge").innerText =
-          `${currentChapter} | Level: ${currentLevel}`;
-        switchPhase("phase3");
+        // Return to Phase 1a logic so the user can select a grade and continue learning
+        alert(`Calibration Complete! You are classified as: ${currentLevel}`);
+        window.location.reload(); // Reload to hit the initialization logic cleanly
       }
 
       // --- AI RAG FETCH ---

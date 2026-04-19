@@ -3,6 +3,7 @@ import statistics
 import chromadb
 import json
 import logging
+import bcrypt
 from fastapi import FastAPI, Query, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -52,6 +53,94 @@ except Exception:
 class LevelAnswers(BaseModel):
     answers: list[int]
 
+# --- AUTHENTICATION MODELS ---
+class AuthEmailCheck(BaseModel):
+    email: str
+
+class AuthSignup(BaseModel):
+    email: str
+    password: str
+    name: str
+
+class AuthLogin(BaseModel):
+    email: str
+    password: str
+
+class AuthUpdateLevel(BaseModel):
+    user_id: str
+    level: str
+
+# --- AUTHENTICATION ENDPOINTS ---
+
+@app.post("/auth/check-email")
+async def check_email(data: AuthEmailCheck):
+    if not supabase:
+        return {"exists": False}
+
+    res = supabase.table("users").select("id").eq("email", data.email).execute()
+    exists = len(res.data) > 0
+    return {"exists": exists}
+
+@app.post("/auth/signup")
+async def signup(data: AuthSignup):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+
+    # Check if user already exists
+    res = supabase.table("users").select("id").eq("email", data.email).execute()
+    if len(res.data) > 0:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    # Hash password
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(data.password.encode('utf-8'), salt).decode('utf-8')
+
+    # Insert new user with 'Pending' grade so they take the calibration test
+    new_user = {
+        "email": data.email,
+        "password_hash": hashed,
+        "grade": "Pending",
+        "total_points": 0,
+        "current_streak": 0
+        # name isn't in the schema per test script, ignoring name for now or could store in a profiles table if needed.
+        # since it's just a hackathon/proto app, if we really need it we would alter the table, but let's stick to what we know.
+    }
+
+    res = supabase.table("users").insert(new_user).execute()
+    if not res.data:
+        raise HTTPException(status_code=500, detail="Failed to create user")
+
+    user = res.data[0]
+    return {"id": user["id"], "email": user["email"], "grade": user["grade"]}
+
+@app.post("/auth/login")
+async def login(data: AuthLogin):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+
+    res = supabase.table("users").select("*").eq("email", data.email).execute()
+    if len(res.data) == 0:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    user = res.data[0]
+    hashed_password = user["password_hash"]
+
+    if not bcrypt.checkpw(data.password.encode('utf-8'), hashed_password.encode('utf-8')):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    return {"id": user["id"], "email": user["email"], "grade": user.get("grade", "Pending")}
+
+@app.post("/auth/update-level")
+async def update_level(data: AuthUpdateLevel):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+
+    res = supabase.table("users").update({"grade": data.level}).eq("id", data.user_id).execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="User not found or update failed")
+
+    return {"success": True, "grade": res.data[0]["grade"]}
+
 # --- SUPABASE DYNAMIC ENDPOINTS (WITH SAFE FALLBACKS) ---
 
 @app.get("/grades")
@@ -87,68 +176,33 @@ async def get_chapters(grade: str = Query(...), subject: str = Query(...)):
     return {"subject": subject, "chapters": default_chapters}
 
 @app.get("/level-test")
-async def get_level_test(subject: str = Query(...)):
-    if subject.upper() == "BYOM":
-        return {
-            "subject": "BYOM",
-            "questions": [
-                {
-                    "question": "What type of content helps you learn best: diagrams, definitions, stories, or examples?",
-                    "options": [
-                        "A. Diagrams",
-                        "B. Definitions",
-                        "C. Stories",
-                        "D. Examples"
-                    ],
-                    "difficulty": 2
-                },
-                {
-                    "question": "When you see a new topic, do you prefer a short summary or step-by-step notes?",
-                    "options": [
-                        "A. Short summary",
-                        "B. Step-by-step notes",
-                        "C. A story",
-                        "D. A diagram"
-                    ],
-                    "difficulty": 2
-                },
-                {
-                    "question": "If something feels too hard, would you rather get a simpler hint or a concrete example?",
-                    "options": [
-                        "A. Simpler hint",
-                        "B. Concrete example",
-                        "C. Longer explanation",
-                        "D. Skip it",
-                    ],
-                    "difficulty": 2
-                },
-                {
-                    "question": "Do you feel more confident when the answer is shown with a quick list or a short story?",
-                    "options": [
-                        "A. Quick list",
-                        "B. Short story",
-                        "C. Diagram only",
-                        "D. No preference"
-                    ],
-                    "difficulty": 2
-                }
-            ]
-        }
+async def get_level_test():
     if not supabase:
-        return {"subject": subject, "questions": []}
-    res = supabase.table("calibration_questions").select("*").eq("subject", subject).execute()
+        return {"questions": []}
+    # Fetch all general calibration questions from DB (subject parameter is no longer used)
+    res = supabase.table("calibration_questions").select("*").execute()
     if not res.data:
         return JSONResponse(status_code=404, content={"error": "No calibration questions found."})
-    return {"subject": subject, "questions": res.data}
+    return {"questions": res.data}
 
 @app.post("/calculate-level")
 async def calculate_level(data: LevelAnswers):
     if not data.answers:
-        return {"level": "Intermediate", "median_score": 3}
-    med = statistics.median(data.answers)
-    if med <= 2: return {"level": "Beginner", "median_score": med}
-    elif med <= 3: return {"level": "Intermediate", "median_score": med}
-    return {"level": "Advanced", "median_score": med}
+        return {"level": "Intermediate", "average_score": 2}
+
+    # Calculate average of correctness values
+    # Lower value = more correct. e.g. 1 = Advanced, 4 = Beginner
+    avg = sum(data.answers) / len(data.answers)
+
+    # 1.0 to ~1.8 -> Advanced
+    # ~1.8 to ~2.6 -> Intermediate
+    # ~2.6 to 4.0 -> Beginner
+
+    if avg <= 1.8:
+        return {"level": "Advanced", "average_score": avg}
+    elif avg <= 2.6:
+        return {"level": "Intermediate", "average_score": avg}
+    return {"level": "Beginner", "average_score": avg}
 
 # --- RESTORED SESSION STATS ---
 @app.get("/session-stats")
@@ -219,3 +273,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 @app.get("/")
 async def read_index():
     return FileResponse(os.path.join("templates", "index.html"))
+
+@app.get("/login")
+async def read_login():
+    return FileResponse(os.path.join("templates", "login.html"))
