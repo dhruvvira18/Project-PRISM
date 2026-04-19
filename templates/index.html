@@ -16,7 +16,7 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
-    <link href="..\..\static\style.css" rel="stylesheet" />
+    <link href="../../static/style.css" rel="stylesheet" />
 
     <style>
       :root {
@@ -245,6 +245,7 @@
         margin-bottom: 8px;
         font-weight: 600;
         color: #2a3b31;
+        font-size: 1.15rem;
       }
 
       .visual-icon {
@@ -364,40 +365,38 @@
         box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
       }
 
-      /* --- Diagram & SVG Animations --- */
-      .diagram-element {
-        opacity: 0;
-        transition: opacity 0.5s ease-in-out;
-      }
-
-      .arrow-motion-x {
-        animation: arrowMoveX 1.5s infinite alternate ease-in-out;
-      }
-      .arrow-motion-y {
-        animation: arrowMoveY 1.5s infinite alternate ease-in-out;
-      }
-
-      @keyframes arrowMoveX {
-        from {
-          transform: translateX(0px);
-        }
-        to {
-          transform: translateX(5px);
-        }
-      }
-      @keyframes arrowMoveY {
-        from {
-          transform: translateY(0px);
-        }
-        to {
-          transform: translateY(5px);
-        }
-      }
-
-      .svg-container {
+      /* --- PERFECT MERMAID DIAGRAM RESPONSIVENESS --- */
+      .mermaid-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: white;
         border: 2px dashed #e2e8f0;
         border-radius: 16px;
-        padding: 1rem;
+        padding: 1rem; /* Tightened padding */
+        margin: 1rem auto;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto; /* Horizontal scroll if absolutely needed */
+        overflow-y: hidden; /* Kills vertical whitespace */
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .mermaid {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      .mermaid svg {
+        max-width: 100% !important;
+        height: auto !important; /* Critical: overrides Mermaid's hardcoded height */
+        max-height: 50vh; /* Prevents extreme vertical stretching */
+        display: block;
+        margin: 0 auto;
       }
 
       @keyframes float-up {
@@ -411,6 +410,34 @@
         }
       }
     </style>
+    
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      // Strict layout, font matching, and spacing for Mermaid.js
+      mermaid.initialize({ 
+        startOnLoad: false, 
+        theme: 'base',
+        themeVariables: {
+          fontFamily: '"Nunito", sans-serif',
+          fontSize: '18.4px', /* CRITICAL: Exactly matches 1.15rem text size */
+          primaryColor: '#F8FAFC',
+          primaryBorderColor: '#7F9FBA',
+          lineColor: '#7F9FBA',
+          textColor: '#2D3748',
+          primaryTextColor: '#2D3748',
+          nodeBorder: '#7F9FBA'
+        },
+        flowchart: { 
+          useMaxWidth: false, /* CRITICAL FIX: Prevents diagram from stretching vertically to fill width */
+          htmlLabels: true,
+          curve: 'linear',
+          nodeSpacing: 35, /* Tightens horizontal gaps */
+          rankSpacing: 35, /* Tightens vertical gaps to kill whitespace */
+          padding: 10
+        },
+        securityLevel: 'loose'
+      });
+    </script>
   </head>
   <body>
     <div class="site-logo">PRISM</div>
@@ -444,7 +471,12 @@
         <p class="text-muted" style="font-size: 1.2rem">
           What are we focusing on today?
         </p>
-        <div id="chapterButtons" class="subject-grid"></div>
+        <div id="chapterSelection" class="d-flex flex-column align-items-center gap-3">
+          <select id="chapterDropdown" class="form-select" style="width: 300px; padding: 1rem; border: 2px solid var(--primary-blue); border-radius: 20px; background-color: white; box-shadow: var(--card-shadow); font-size: 1.1rem; color: var(--text-dark);">
+            <option value="">Choose a chapter...</option>
+          </select>
+          <button id="startLearningBtn" class="btn btn-ask" style="width: 300px;" disabled>Start Learning</button>
+        </div>
       </div>
 
       <div id="phase-byom" class="phase text-center">
@@ -534,7 +566,7 @@
       // --- GLOBAL STATE ---
       let currentGrade = "";
       let currentSubject = "";
-      let currentChapter = ""; // Tracks the new chapter selection
+      let currentChapter = "";
       let currentLevel = "Intermediate";
       let levelTestSelections = {};
       let currentQuiz = null;
@@ -550,7 +582,7 @@
       let sessionQuestionsCorrect = 0;
       let breakReminderShown = false;
 
-      const API_URL = ""; // Assuming relative path for FastAPI
+      const API_URL = ""; 
 
       // --- SESSION TIMER LOGIC ---
       function startSessionTimer() {
@@ -593,8 +625,19 @@
         if (phaseId === "phase3" && !sessionStartTime) startSessionTimer();
       }
 
+      // --- TTS INITIALIZATION ---
+      function initializeTTS() {
+        if (!window.speechSynthesis) return false;
+        speechSynthesis.getVoices();
+        speechSynthesis.onvoiceschanged = () => {
+          speechSynthesis.getVoices();
+        };
+        return true;
+      }
+
       // --- INITIALIZATION ---
       window.onload = async () => {
+        initializeTTS();
         try {
           const res = await fetch(`${API_URL}/grades`);
           const data = await res.json();
@@ -635,7 +678,7 @@
             const btn = document.createElement("button");
             btn.className = "btn-subject";
             btn.innerText = sub;
-            btn.onclick = () => loadChapters(sub); // Routes to chapters now
+            btn.onclick = () => loadChapters(sub);
             container.appendChild(btn);
           });
         } catch (e) {
@@ -643,6 +686,7 @@
         }
       }
 
+      // --- FIXED: Chapter Dropdown Logic ---
       async function loadChapters(subject) {
         currentSubject = subject;
         switchPhase("phase1c");
@@ -651,25 +695,34 @@
             `${API_URL}/chapters?grade=${encodeURIComponent(currentGrade)}&subject=${encodeURIComponent(subject)}`,
           );
           const data = await res.json();
-          const container = document.getElementById("chapterButtons");
-          container.innerHTML = "";
-
+          const dropdown = document.getElementById("chapterDropdown");
+          const startBtn = document.getElementById("startLearningBtn");
+          
+          dropdown.innerHTML = '<option value="">Choose a chapter...</option>';
+          
           if (data.chapters.length === 0) {
-            container.innerHTML =
-              "<p class='text-muted'>No chapters found in Supabase.</p>";
+            dropdown.innerHTML = '<option value="">No chapters found in Supabase.</option>';
+            startBtn.disabled = true;
             return;
           }
-
+          
           data.chapters.forEach((chap) => {
-            const btn = document.createElement("button");
-            btn.className = "btn-subject";
-            btn.innerText = chap;
-            btn.onclick = () => {
-              currentChapter = chap;
-              loadLevelTest(subject);
-            };
-            container.appendChild(btn);
+            const option = document.createElement("option");
+            option.value = chap;
+            option.textContent = chap;
+            dropdown.appendChild(option);
           });
+          
+          dropdown.onchange = () => {
+            currentChapter = dropdown.value;
+            startBtn.disabled = !currentChapter;
+          };
+          
+          startBtn.onclick = () => {
+            if (currentChapter) {
+              loadLevelTest(subject);
+            }
+          };
         } catch (e) {
           console.error(e);
         }
@@ -688,7 +741,7 @@
           levelTestQuestions = data.questions;
 
           if (levelTestQuestions.length === 0) {
-            submitLevelTest(); // Skip if no questions available
+            submitLevelTest();
             return;
           }
           renderTestQuestion();
@@ -713,7 +766,6 @@
         block.className = "level-q-container";
         block.innerHTML = `<h4 class="mb-4">${q.question}</h4>`;
 
-        // Parse options from JSONB if necessary
         const options =
           typeof q.options === "string" ? JSON.parse(q.options) : q.options;
         const shuffledOptions = [...options].sort(() => Math.random() - 0.5);
@@ -823,9 +875,8 @@
         document.getElementById("answerSection").style.display = "none";
 
         try {
-          // Passes the new subject and chapter parameters
           const response = await fetch(
-            `${API_URL}/ask?user_query=${encodeURIComponent(input)}&student_level=${currentLevel}&subject=${encodeURIComponent(currentSubject)}&chapter=${encodeURIComponent(currentChapter)}`,
+            `${API_URL}/ask?user_query=${encodeURIComponent(input)}&student_level=${currentLevel}&grade=${encodeURIComponent(currentGrade)}&subject=${encodeURIComponent(currentSubject)}&chapter=${encodeURIComponent(currentChapter)}`,
           );
           const data = await response.json();
 
@@ -867,11 +918,7 @@
           });
         }
 
-        if (
-          data.visual &&
-          data.visual.objects &&
-          data.visual.objects.length > 0
-        ) {
+        if (data.visual && data.visual.mermaid) {
           dynamicStepsData.push({
             type: "visual",
             title: "Visual Blueprint",
@@ -919,67 +966,57 @@
           .join("");
       }
 
-      // --- SVG DIAGRAM GENERATOR ---
+      // --- PERFECT RESPONSIVE MERMAID RENDERER ---
       function renderDiagram(visualData) {
-        if (!visualData) return "";
-        let svg = `<div class="svg-container" style="max-width: 450px; margin: 0 auto; background: white;">
-                <svg viewBox="0 0 450 450" style="width:100%; display:block; font-family: 'Nunito', sans-serif;">
-                    <defs>
-                        <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-                            <path d="M0,0 L6,3 L0,6 Z" fill="var(--primary-blue)"/>
-                        </marker>
-                    </defs>`;
+        if (!visualData || !visualData.mermaid) return "";
+        
+        let code = visualData.mermaid.trim();
+        const diagramId = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Failsafe: Clean LLM Markdown Hallucinations
+        code = code.replace(/^```mermaid\s*/i, '').replace(/```$/, '').trim();
+        code = code.replace(/^```\s*/, '').replace(/```$/, '').trim();
 
-        (visualData.objects || []).forEach((obj) => {
-          svg += `<g id="svg-${obj.id}" class="diagram-element">`;
-          let rectWidth = obj.width || 140;
-          let rectHeight = obj.height || 50;
-          if (obj.shape === "rect") {
-            svg += `<rect x="${obj.x}" y="${obj.y}" width="${rectWidth}" height="${rectHeight}" fill="#F8FAFC" stroke="var(--text-dark)" stroke-width="2.5" rx="8"/>`;
-          } else if (obj.shape === "circle") {
-            svg += `<circle cx="${obj.x}" cy="${obj.y}" r="${obj.r || 30}" fill="#F8FAFC" stroke="var(--text-dark)" stroke-width="2.5"/>`;
-          }
-          if (obj.label) {
-            let lx = obj.shape === "rect" ? obj.x + rectWidth / 2 : obj.x;
-            let ly = obj.shape === "rect" ? obj.y + rectHeight / 2 : obj.y;
-            svg += `<text x="${lx}" y="${ly}" font-size="14" fill="var(--text-dark)" text-anchor="middle" dominant-baseline="middle" font-weight="700">${obj.label}</text>`;
-          }
-          svg += `</g>`;
-        });
+        const isMermaid = /^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|pie|gantt|journey)/i.test(code);
+        
+        if (!isMermaid) {
+            return `<div class="p-4 bg-light border rounded text-center text-muted" style="border-radius: 12px; margin: 20px 0;">
+                      <i class="fas fa-sitemap mb-2" style="font-size: 2rem; color: var(--primary-blue)"></i>
+                      <p class="mb-0"><strong>Visual Concept:</strong><br>${code}</p>
+                    </div>`;
+        }
 
-        (visualData.arrows || []).forEach((arr) => {
-          let isVertical = Math.abs(arr.from[0] - arr.to[0]) < 20;
-          let motionClass = isVertical ? "arrow-motion-y" : "arrow-motion-x";
-          svg += `<g id="svg-${arr.id}" class="diagram-element ${motionClass}">`;
-          svg += `<line x1="${arr.from[0]}" y1="${arr.from[1]}" x2="${arr.to[0]}" y2="${arr.to[1]}" stroke="var(--primary-blue)" stroke-width="3" marker-end="url(#arrow)"/>`;
-          if (arr.label) {
-            let lx = (arr.from[0] + arr.to[0]) / 2 + (isVertical ? 30 : 0);
-            let ly = (arr.from[1] + arr.to[1]) / 2 - (isVertical ? 0 : 12);
-            svg += `<text x="${lx}" y="${ly}" font-size="12" fill="var(--primary-blue)" text-anchor="middle" dominant-baseline="middle" font-weight="700">${arr.label}</text>`;
-          }
-          svg += `</g>`;
-        });
-        svg += `</svg></div>`;
-        return svg;
+        return `<div class="mermaid-wrapper">
+                  <div id="${diagramId}" class="mermaid">${code}</div>
+                </div>`;
       }
 
-      function animateDiagram(animationSteps) {
-        animationTimers.forEach(clearTimeout);
-        animationTimers = [];
-        if (!animationSteps || !Array.isArray(animationSteps)) return;
-        document
-          .querySelectorAll(".diagram-element")
-          .forEach((el) => (el.style.opacity = "0"));
-        animationSteps.forEach((step, index) => {
-          let timer = setTimeout(
-            () => {
-              let el = document.getElementById(`svg-${step.show}`);
-              if (el) el.style.opacity = "1";
-            },
-            index * 800 + 400,
-          );
-          animationTimers.push(timer);
-        });
+      async function renderMermaidDiagrams() {
+        if (typeof mermaid !== 'undefined') {
+          const elements = document.querySelectorAll('.mermaid:not([data-processed="true"])');
+          if (elements.length === 0) return;
+          
+          try {
+            await mermaid.run({ nodes: elements });
+            
+            // Post-Processing: Let it use natural height, scale width if needed
+            elements.forEach(el => {
+              el.setAttribute('data-processed', 'true');
+              const svg = el.querySelector('svg');
+              if (svg) {
+                svg.style.maxWidth = '100%';
+                svg.style.height = 'auto';     
+                svg.style.margin = '0 auto';
+              }
+            });
+          } catch (e) {
+            console.error("Mermaid syntax error from LLM:", e);
+            elements.forEach(el => {
+              el.innerHTML = `<div class="text-danger p-3 border rounded text-center"><i class="fas fa-exclamation-triangle"></i> Failed to render diagram.</div>`;
+              el.setAttribute('data-processed', 'true');
+            });
+          }
+        }
       }
 
       function showStep(index) {
@@ -1021,10 +1058,6 @@
             <div class="visual-icon"><i class="fas ${stepData.icon}"></i></div>
             <h3 class="mb-3 text-center">${stepData.title}</h3>
             ${renderDiagram(stepData.visualData)}`;
-          setTimeout(
-            () => animateDiagram(stepData.visualData.animation_steps),
-            50,
-          );
         } else if (stepData.type === "quiz") {
           innerContent = `
             <span class="step-indicator">Step ${index + 1} of ${dynamicStepsData.length}</span>
@@ -1054,6 +1087,9 @@
 
         cardContainer.innerHTML = innerContent + navHTML;
         cardContainer.classList.add("active-step");
+
+        // Trigger Mermaid rendering safely
+        setTimeout(renderMermaidDiagrams, 50);
       }
 
       // --- PRISM AUDIO ENGINE ---
@@ -1132,7 +1168,6 @@
 
         prismUtterance.onboundary = (event) => {
           if (event.name !== "word") return;
-          // Substring up to the charIndex, split by whitespace to find word index
           const trimmed = text.substring(0, event.charIndex).trim();
           const wordIndex = trimmed === "" ? 0 : trimmed.split(/\s+/).length;
 
