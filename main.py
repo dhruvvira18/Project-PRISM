@@ -168,7 +168,7 @@ async def get_grades():
 
 @app.get("/subjects")
 async def get_subjects(grade: str = Query(...)):
-    default_subjects = ["Science", "Social Studies"]
+    default_subjects = ["Science", "Social Science"]
     if supabase:
         res = supabase.table("syllabus").select("subject").eq("grade", grade).execute()
         unique_subjects = sorted(list(set([row["subject"] for row in res.data])))
