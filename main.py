@@ -136,8 +136,8 @@ async def login(data: AuthLogin):
     return {
         "id": user["id"],
         "email": user["email"],
-        "science_level": user.get("science_level", "Pending"),
-        "social_science_level": user.get("social_science_level", "Pending")
+        "science_level": user.get("science_level") or "Pending",
+        "social_science_level": user.get("social_science_level") or "Pending"
     }
 
 @app.post("/auth/update-level")
@@ -188,19 +188,16 @@ async def get_chapters(grade: str = Query(...), subject: str = Query(...)):
     return {"subject": subject, "chapters": default_chapters}
 
 @app.get("/level-test")
-async def get_level_test():
+async def get_level_test(subject: str = Query(...)):
     if not supabase:
-        return {"questions": []}
+        return {"subject": subject, "questions": []}
 
-    res_science = supabase.table("calibration_questions").select("*").eq("subject", "Science").execute()
-    res_social = supabase.table("calibration_questions").select("*").eq("subject", "Social Science").execute()
+    res = supabase.table("calibration_questions").select("*").eq("subject", subject).execute()
 
-    questions = (res_science.data or []) + (res_social.data or [])
-
-    if not questions:
+    if not res.data:
         return JSONResponse(status_code=404, content={"error": "No calibration questions found."})
 
-    return {"questions": questions}
+    return {"subject": subject, "questions": res.data}
 
 @app.post("/calculate-level")
 async def calculate_level(data: LevelAnswers):
