@@ -695,6 +695,14 @@
 
       // --- INITIALIZATION ---
       window.onload = async () => {
+        const userId = localStorage.getItem('prism_user_id');
+        if (!userId) {
+            window.location.href = '/login';
+            return;
+        }
+
+        switchPhase("phase1a");
+
         try {
           const res = await fetch(`${API_URL}/grades`);
           const data = await res.json();
@@ -801,6 +809,16 @@
 
       async function loadChapters(subject) {
         currentSubject = subject;
+
+        let localKey = subject.toLowerCase() === "science" ? "prism_science_level" : "prism_social_science_level";
+        let subLevel = localStorage.getItem(localKey);
+
+        if (!subLevel || subLevel === "Pending") {
+            loadLevelTest(subject);
+            return;
+        }
+
+        currentLevel = subLevel;
         switchPhase("phase1c");
 
         // Reset dropdown state
@@ -845,33 +863,34 @@
         levelTestSelections = {};
         currentTestIndex = 0;
         try {
-          const res = await fetch(
-            `${API_URL}/level-test?subject=${encodeURIComponent(subject)}`,
-          );
+          const res = await fetch(`${API_URL}/level-test?subject=${encodeURIComponent(subject)}`);
+          if (!res.ok) throw new Error("API error");
           const data = await res.json();
-          levelTestQuestions = data.questions;
+          levelTestQuestions = data.questions || [];
 
           if (levelTestQuestions.length === 0) {
-            submitLevelTest(); // Skip if no questions available
+            submitLevelTest(subject);
             return;
           }
           renderTestQuestion();
         } catch (e) {
-          submitLevelTest();
+          submitLevelTest(subject);
         }
       }
 
       function renderTestQuestion() {
         const container = document.getElementById("levelTestArea");
         container.innerHTML = "";
+
         if (currentTestIndex >= levelTestQuestions.length) {
-          submitLevelTest();
+          submitLevelTest(currentSubject);
           return;
         }
 
         const q = levelTestQuestions[currentTestIndex];
+
         document.getElementById("testProgress").innerText =
-          `Question ${currentTestIndex + 1} / ${levelTestQuestions.length}`;
+          `[${currentSubject} Calibration] Question ${currentTestIndex + 1} / ${levelTestQuestions.length}`;
 
         const block = document.createElement("div");
         block.className = "level-q-container";
@@ -887,7 +906,7 @@
           btn.className = "level-option";
           btn.innerText = opt.text;
           btn.onclick = () => {
-            levelTestSelections[currentTestIndex] = opt.difficulty;
+            levelTestSelections[currentTestIndex] = opt.difficulty || opt.correctness || 2;
             setTimeout(() => {
               currentTestIndex++;
               renderTestQuestion();
@@ -933,7 +952,10 @@
           currentGrade = "BYOM";
           currentSubject = "BYOM";
           currentChapter = "Uploaded Document";
-          loadLevelTest("BYOM");
+
+          currentLevel = "Advanced";
+          document.getElementById("levelBadge").innerText = `${currentChapter} | Level: ${currentLevel}`;
+          switchPhase("phase3");
         } catch (error) {
           alert(`Upload failed: ${error.message}`);
         } finally {
@@ -942,9 +964,10 @@
         }
       }
 
-      async function submitLevelTest() {
+      async function submitLevelTest(subject) {
         const answersArr = Object.values(levelTestSelections);
         if (answersArr.length === 0) answersArr.push(2);
+
         try {
           const res = await fetch(`${API_URL}/calculate-level`, {
             method: "POST",
@@ -953,13 +976,27 @@
           });
           const data = await res.json();
           currentLevel = data.level || "Intermediate";
+
+          const userId = localStorage.getItem('prism_user_id');
+          if (userId && subject !== "BYOM") {
+              await fetch(`${API_URL}/auth/update-level`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ user_id: userId, subject: subject, level: currentLevel })
+              });
+              let localKey = subject.toLowerCase() === "science" ? "prism_science_level" : "prism_social_science_level";
+              localStorage.setItem(localKey, currentLevel);
+          }
         } catch (e) {
           currentLevel = "Intermediate";
         }
 
-        document.getElementById("levelBadge").innerText =
-          `${currentChapter} | Level: ${currentLevel}`;
-        switchPhase("phase3");
+        if (subject === "BYOM") {
+           document.getElementById("levelBadge").innerText = `${currentChapter} | Level: ${currentLevel}`;
+           switchPhase("phase3");
+        } else {
+           loadChapters(subject);
+        }
       }
 
       // --- AI RAG FETCH ---
