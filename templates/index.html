@@ -598,25 +598,30 @@
         try {
           const res = await fetch(`${API_URL}/grades`);
           const data = await res.json();
-          const grades = data.grades || [];
-          const container = document.getElementById("gradeButtons") || document.getElementById("gradesContainer");
+          const container = document.getElementById("gradeButtons");
           container.innerHTML = "";
-          grades.forEach((grade) => {
+          (data.grades || []).forEach((grade) => {
             const btn = document.createElement("button");
-            btn.className = "prism-card";
+            btn.className = "btn-subject";
             btn.innerText = grade;
-            btn.onclick = () => selectGrade(grade);
+            btn.onclick = () => loadSubjects(grade);
             container.appendChild(btn);
           });
+          const byomButton = document.getElementById("byomButton");
+          if (byomButton) {
+            byomButton.onclick = () => switchPhase("phase-byom");
+          }
+          const uploadByomBtn = document.getElementById("uploadByomBtn");
+          if (uploadByomBtn) {
+            uploadByomBtn.onclick = uploadByomDocument;
+          }
         } catch (e) {
-          const container = document.getElementById("gradeButtons") || document.getElementById("gradesContainer");
-          if (container) container.innerHTML = "<p class='text-danger'>Error loading grades.</p>";
+          document.getElementById("gradeButtons").innerHTML =
+            "<p class='text-danger'>Cannot connect to AI Backend.</p>";
         }
       }
 
       window.onload = async () => {
-        console.log('window.onload fired');
-        console.log('user id:', localStorage.getItem('prism_user_id'));
         const userId = localStorage.getItem('prism_user_id');
         if (!userId) {
           window.location.href = '/auth';
@@ -626,17 +631,16 @@
         const urlParams = new URLSearchParams(window.location.search);
         const flow = urlParams.get('flow');
 
-        loadGrades(); // Start loading grades in the background unconditionally
+        loadGrades();
 
         if (flow === 'calibration') {
-            console.log("Detected calibration flow, loading level test");
             document.getElementById("phase1a").classList.remove("active-phase");
             document.getElementById("phase2").classList.add("active-phase");
             currentGrade = 'Calibration';
             currentSubject = 'Calibration';
             currentChapter = 'Level Test';
             loadLevelTest();
-            return; // We don't need to do anything else right now if we're calibrating
+            return;
         }
       };
 
@@ -698,12 +702,10 @@
 
       // --- LEVEL TEST ---
       async function loadLevelTest() {
-        console.log("loadLevelTest started...");
         switchPhase("phase2");
         levelTestSelections = {};
         currentTestIndex = 0;
         try {
-          console.log("Fetching calibration questions...");
           const res = await fetch(
             `${API_URL}/level-test`,
           );
@@ -716,12 +718,11 @@
           }
           renderTestQuestion();
         } catch (e) {
-          console.error("loadLevelTest failed", e);
           submitLevelTest();
         }
       }
 
-function renderTestQuestion() {
+      function renderTestQuestion() {
         const container = document.getElementById("levelTestArea");
         container.innerHTML = "";
         if (currentTestIndex >= levelTestQuestions.length) {
@@ -737,23 +738,21 @@ function renderTestQuestion() {
         block.className = "level-q-container";
         block.innerHTML = `<h4 class="mb-4">${q.question}</h4>`;
 
-        let options = q.options;
-        if (typeof options === "string") {
-            try {
-                options = JSON.parse(options);
-            } catch (e) {
-                options = [];
-            }
+        let options = [];
+        try {
+            options = typeof q.options === "string" ? JSON.parse(q.options) : q.options;
+        } catch(e) {
+            console.error("Error parsing options", e);
         }
 
         const shuffledOptions = [...options].sort(() => Math.random() - 0.5);
 
         shuffledOptions.forEach((opt) => {
           const btn = document.createElement("button");
-          btn.className = "level-option";
+          btn.className = "prism-card level-option w-100";
           btn.innerText = opt.text;
           btn.onclick = () => {
-            levelTestSelections[currentTestIndex] = opt.difficulty;
+            levelTestSelections[q.id] = opt.difficulty;
             setTimeout(() => {
               currentTestIndex++;
               renderTestQuestion();
@@ -810,7 +809,7 @@ function renderTestQuestion() {
         }
       }
 
-async function submitLevelTest() {
+      async function submitLevelTest() {
         const answersArr = Object.values(levelTestSelections);
         if (answersArr.length === 0) answersArr.push(2);
         try {
@@ -824,9 +823,6 @@ async function submitLevelTest() {
         } catch (e) {
           currentLevel = "Intermediate";
         }
-
-        document.getElementById("levelBadge").innerText =
-          `${currentChapter || 'Calibration'} | Level: ${currentLevel}`;
 
         const userId = localStorage.getItem('prism_user_id');
         if (userId) {
@@ -845,10 +841,9 @@ async function submitLevelTest() {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('flow') === 'calibration') {
             window.history.replaceState({}, document.title, "/");
-            switchPhase("phase1a");
-        } else {
-            switchPhase("phase1a");
         }
+
+        switchPhase("phase1a");
       }
 
       // --- AI RAG FETCH ---

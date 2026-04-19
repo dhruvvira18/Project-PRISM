@@ -1,0 +1,128 @@
+INFO:     Started server process [633310]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:38128 - "GET /auth HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users?select=id&email=eq.testuser_1776598809%40example.com "HTTP/2 200 OK"
+INFO:     127.0.0.1:38128 - "POST /auth/check-email HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users "HTTP/2 201 Created"
+INFO:     127.0.0.1:38128 - "POST /auth/signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38128 - "GET /?flow=calibration HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38128 - "GET /static/style.css HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/syllabus?select=grade "HTTP/2 200 OK"
+INFO:     127.0.0.1:38128 - "GET /grades HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/calibration_questions?select=%2A "HTTP/2 200 OK"
+INFO:     127.0.0.1:45114 - "GET /level-test?subject=undefined HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45114 - "POST /calculate-level HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35732 - "GET /auth HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users?select=id&email=eq.testuser_1776598972%40example.com "HTTP/2 200 OK"
+INFO:     127.0.0.1:35732 - "POST /auth/check-email HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users "HTTP/2 201 Created"
+INFO:     127.0.0.1:35732 - "POST /auth/signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35732 - "GET /?flow=calibration HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35732 - "GET /static/style.css HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/syllabus?select=grade "HTTP/2 200 OK"
+INFO:     127.0.0.1:35732 - "GET /grades HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/calibration_questions?select=%2A "HTTP/2 200 OK"
+INFO:     127.0.0.1:35736 - "GET /level-test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35736 - "POST /calculate-level HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34772 - "GET /auth HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users?select=id&email=eq.testuser_1776599109%40example.com "HTTP/2 200 OK"
+INFO:     127.0.0.1:34772 - "POST /auth/check-email HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users "HTTP/2 201 Created"
+INFO:     127.0.0.1:34772 - "POST /auth/signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34772 - "GET /?flow=calibration HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34772 - "GET /static/style.css HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/syllabus?select=grade "HTTP/2 200 OK"
+INFO:     127.0.0.1:34772 - "GET /grades HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/calibration_questions?select=%2A "HTTP/2 200 OK"
+INFO:     127.0.0.1:38684 - "GET /level-test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38684 - "POST /calculate-level HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45634 - "GET /auth HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users?select=id&email=eq.testuser_1776599315%40example.com "HTTP/2 200 OK"
+INFO:     127.0.0.1:45634 - "POST /auth/check-email HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users "HTTP/2 201 Created"
+INFO:     127.0.0.1:45634 - "POST /auth/signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45634 - "GET /?flow=calibration HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45634 - "GET /static/style.css HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/syllabus?select=grade "HTTP/2 200 OK"
+INFO:     127.0.0.1:45634 - "GET /grades HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/calibration_questions?select=%2A "HTTP/2 200 OK"
+INFO:     127.0.0.1:45646 - "GET /level-test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45646 - "POST /calculate-level HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39646 - "GET /auth HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users?select=id&email=eq.testuser_1776599376%40example.com "HTTP/2 200 OK"
+INFO:     127.0.0.1:39646 - "POST /auth/check-email HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users "HTTP/2 201 Created"
+INFO:     127.0.0.1:39646 - "POST /auth/signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39646 - "GET /?flow=calibration HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39646 - "GET /static/style.css HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/syllabus?select=grade "HTTP/2 200 OK"
+INFO:     127.0.0.1:39646 - "GET /grades HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/calibration_questions?select=%2A "HTTP/2 200 OK"
+INFO:     127.0.0.1:39652 - "GET /level-test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39652 - "POST /calculate-level HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53056 - "GET /auth HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users?select=id&email=eq.testuser_1776599553%40example.com "HTTP/2 200 OK"
+INFO:     127.0.0.1:53056 - "POST /auth/check-email HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users "HTTP/2 201 Created"
+INFO:     127.0.0.1:53056 - "POST /auth/signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53056 - "GET /?flow=calibration HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53056 - "GET /static/style.css HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/syllabus?select=grade "HTTP/2 200 OK"
+INFO:     127.0.0.1:53056 - "GET /grades HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/calibration_questions?select=%2A "HTTP/2 200 OK"
+INFO:     127.0.0.1:53072 - "GET /level-test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53072 - "POST /calculate-level HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: PATCH https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users?id=eq.38ad09b0-278d-4263-8aed-3bac0975309a "HTTP/2 200 OK"
+INFO:     127.0.0.1:53072 - "POST /update-user-level HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/syllabus?select=subject&grade=eq.Grade+10 "HTTP/2 200 OK"
+INFO:     127.0.0.1:53072 - "GET /subjects?grade=Grade%2010 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42974 - "GET /auth HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users?select=id&email=eq.testuser_1776599681%40example.com "HTTP/2 200 OK"
+INFO:     127.0.0.1:42974 - "POST /auth/check-email HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users "HTTP/2 201 Created"
+INFO:     127.0.0.1:42974 - "POST /auth/signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42974 - "GET /?flow=calibration HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42974 - "GET /static/style.css HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/syllabus?select=grade "HTTP/2 200 OK"
+INFO:     127.0.0.1:42974 - "GET /grades HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/calibration_questions?select=%2A "HTTP/2 200 OK"
+INFO:     127.0.0.1:42988 - "GET /level-test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42988 - "POST /calculate-level HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: PATCH https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users?id=eq.0a6f3629-9056-44b7-9b50-90be02a158cb "HTTP/2 200 OK"
+INFO:     127.0.0.1:42988 - "POST /update-user-level HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/syllabus?select=subject&grade=eq.Grade+10 "HTTP/2 200 OK"
+INFO:     127.0.0.1:42988 - "GET /subjects?grade=Grade%2010 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41916 - "GET /auth HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users?select=id&email=eq.testuser_1776604929%40example.com "HTTP/2 200 OK"
+INFO:     127.0.0.1:41916 - "POST /auth/check-email HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users "HTTP/2 201 Created"
+INFO:     127.0.0.1:41916 - "POST /auth/signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41916 - "GET /?flow=calibration HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41916 - "GET /static/style.css HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/syllabus?select=grade "HTTP/2 200 OK"
+INFO:     127.0.0.1:41916 - "GET /grades HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/calibration_questions?select=%2A "HTTP/2 200 OK"
+INFO:     127.0.0.1:40146 - "GET /level-test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40146 - "POST /calculate-level HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: PATCH https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users?id=eq.a06d3b04-1667-4d4f-ad54-3caaa5ab49e0 "HTTP/2 200 OK"
+INFO:     127.0.0.1:40146 - "POST /update-user-level HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/syllabus?select=subject&grade=eq.Grade+10 "HTTP/2 200 OK"
+INFO:     127.0.0.1:40146 - "GET /subjects?grade=Grade%2010 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40304 - "GET /auth HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users?select=id&email=eq.testuser_1776605338%40example.com "HTTP/2 200 OK"
+INFO:     127.0.0.1:40304 - "POST /auth/check-email HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users "HTTP/2 201 Created"
+INFO:     127.0.0.1:40304 - "POST /auth/signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40304 - "GET /?flow=calibration HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40304 - "GET /static/style.css HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/syllabus?select=grade "HTTP/2 200 OK"
+INFO:     127.0.0.1:40304 - "GET /grades HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/calibration_questions?select=%2A "HTTP/2 200 OK"
+INFO:     127.0.0.1:41474 - "GET /level-test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41474 - "POST /calculate-level HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: PATCH https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/users?id=eq.7e42f20c-e7db-4a7f-8b86-8ffb6bd370ce "HTTP/2 200 OK"
+INFO:     127.0.0.1:41474 - "POST /update-user-level HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://cofebktukzcztfvxdfeb.supabase.co/rest/v1/syllabus?select=subject&grade=eq.Grade+10 "HTTP/2 200 OK"
+INFO:     127.0.0.1:41474 - "GET /subjects?grade=Grade%2010 HTTP/1.1" 200 OK
