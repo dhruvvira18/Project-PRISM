@@ -13,10 +13,12 @@ from supabase import create_client, Client
 
 from byom_handler import process_byom_pdf
 from generator import get_prism_content_from_db
+import generator
+print(generator.API_KEY)
 
 logging.basicConfig(level=logging.INFO)
 
-load_dotenv()
+load_dotenv(override=True)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 

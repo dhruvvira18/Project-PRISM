@@ -2,10 +2,14 @@ import os
 import json
 import logging
 from google import genai
-from dotenv import load_dotenv
+from dotenv import load_dotenv,find_dotenv
+env_path = find_dotenv()
+print("ENV FILE LOADED:", env_path)
 
-load_dotenv()
+load_dotenv(find_dotenv(), override=True)
+
 API_KEY = os.getenv("GEMINI_API_KEY")
+print(f"API KEY BEING USED ENDS WITH: ...{API_KEY[-4:] if API_KEY else 'NONE'}")
 client_ai = genai.Client(api_key=API_KEY)
 
 def get_prism_content_from_db(user_query: str, student_level: str, subject: str, chapter: str, collection, bypass_metadata: bool = False):
