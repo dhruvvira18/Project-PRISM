@@ -80,8 +80,10 @@ async def get_chapters(grade: str = Query(...), subject: str = Query(...)):
     # Fallback to a generic list if Supabase isn't populated for this subject yet
     default_chapters = ["Chapter 1", "Chapter 2", "Chapter 3", "Chapter 4", "Chapter 5"]
     if supabase:
+        # Avoid alphabetical sorting to preserve syllabus order. Since dictionaries preserve order since Python 3.7
+        # we can use dict.fromkeys to remove duplicates while maintaining the order returned by the query.
         res = supabase.table("syllabus").select("chapter_name").eq("grade", grade).eq("subject", subject).execute()
-        unique_chapters = sorted(list(set([row["chapter_name"] for row in res.data])))
+        unique_chapters = list(dict.fromkeys([row["chapter_name"] for row in res.data]))
         if len(unique_chapters) > 0:
             return {"subject": subject, "chapters": unique_chapters}
     return {"subject": subject, "chapters": default_chapters}
