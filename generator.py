@@ -4,9 +4,10 @@ import logging
 from google import genai
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 API_KEY = os.getenv("GEMINI_API_KEY")
 client_ai = genai.Client(api_key=API_KEY)
+print(API_KEY)
 
 def get_prism_content_from_db(user_query: str, student_level: str, subject: str, chapter: str, collection, bypass_metadata: bool = False):
     """
