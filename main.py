@@ -178,7 +178,22 @@ async def get_subjects(grade: str = Query(...)):
 
 @app.get("/chapters")
 async def get_chapters(grade: str = Query(...), subject: str = Query(...)):
-    # Fallback to a generic list if Supabase isn't populated for this subject yet
+    # Try reading from knowledge_base/<grade>/<subject>/mapping.json first
+    grade_folder = grade.lower().replace(" ", "")
+    subject_folder = subject.lower().replace(" ", "_")
+    mapping_path = os.path.join("knowledge_base", grade_folder, subject_folder, "mapping.json")
+
+    if os.path.exists(mapping_path):
+        try:
+            with open(mapping_path, 'r', encoding='utf-8') as f:
+                mapping = json.load(f)
+            chapters = [data["name"] for data in mapping.values()]
+            if chapters:
+                return {"subject": subject, "chapters": chapters}
+        except Exception as e:
+            logging.error(f"Error reading mapping.json: {e}")
+
+    # Fallback to a generic list if Supabase isn't populated and mapping is missing
     default_chapters = ["Chapter 1", "Chapter 2", "Chapter 3", "Chapter 4", "Chapter 5"]
     if supabase:
         res = supabase.table("syllabus").select("chapter_name").eq("grade", grade).eq("subject", subject).execute()
