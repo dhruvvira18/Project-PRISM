@@ -579,7 +579,8 @@
                 const data = await res.json();
                 localStorage.setItem('prism_user_id', data.id);
                 localStorage.setItem('prism_user_email', data.email);
-                localStorage.setItem('prism_user_level', data.grade);
+                localStorage.setItem('prism_science_level', data.science_level);
+                localStorage.setItem('prism_social_science_level', data.social_science_level);
 
                 btn.disabled = false; btn.textContent = 'Sign In →';
                 showToast('Synced! Redirecting...', 'success');
@@ -623,7 +624,8 @@
                 const data = await res.json();
                 localStorage.setItem('prism_user_id', data.id);
                 localStorage.setItem('prism_user_email', data.email);
-                localStorage.setItem('prism_user_level', data.grade);
+                localStorage.setItem('prism_science_level', data.science_level);
+                localStorage.setItem('prism_social_science_level', data.social_science_level);
 
                 btn.disabled = false; btn.textContent = 'Start Learning →';
                 showToast(`Welcome to PRISM, ${name}!`, 'success');

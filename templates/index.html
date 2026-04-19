@@ -601,13 +601,13 @@
             return;
         }
 
-        currentLevel = localStorage.getItem('prism_user_level');
-        if (!currentLevel || currentLevel === "Pending") {
+        let sciLevel = localStorage.getItem('prism_science_level');
+        let socLevel = localStorage.getItem('prism_social_science_level');
+        if (!sciLevel || sciLevel === "Pending" || !socLevel || socLevel === "Pending") {
             loadLevelTest();
             return;
         }
 
-        // Ensure UI starts on grade phase if calibration is already done
         switchPhase("phase1a");
 
         try {
@@ -660,6 +660,8 @@
 
       async function loadChapters(subject) {
         currentSubject = subject;
+        let localKey = subject.toLowerCase() === "science" ? "prism_science_level" : "prism_social_science_level";
+        currentLevel = localStorage.getItem(localKey) || "Intermediate";
         switchPhase("phase1c");
         try {
           const res = await fetch(
@@ -702,26 +704,34 @@
           levelTestQuestions = data.questions;
 
           if (levelTestQuestions.length === 0) {
-            submitLevelTest(); // Skip if no questions available
+            switchPhase("phase1a");
             return;
           }
           renderTestQuestion();
         } catch (e) {
-          submitLevelTest();
+          switchPhase("phase1a");
         }
       }
 
       function renderTestQuestion() {
         const container = document.getElementById("levelTestArea");
         container.innerHTML = "";
+
+        if (currentTestIndex === 4) {
+            submitSubjectLevel("Science");
+        }
+
         if (currentTestIndex >= levelTestQuestions.length) {
-          submitLevelTest();
+          submitSubjectLevel("Social Science");
           return;
         }
 
         const q = levelTestQuestions[currentTestIndex];
+
+        let headerText = currentTestIndex < 4 ? "Science Calibration" : "Social Science Calibration";
+
         document.getElementById("testProgress").innerText =
-          `Question ${currentTestIndex + 1} / ${levelTestQuestions.length}`;
+          `[${headerText}] Question ${currentTestIndex + 1} / ${levelTestQuestions.length}`;
 
         const block = document.createElement("div");
         block.className = "level-q-container";
@@ -783,6 +793,8 @@
           currentGrade = "BYOM";
           currentSubject = "BYOM";
           currentChapter = "Uploaded Document";
+
+          currentLevel = localStorage.getItem('prism_science_level') || "Intermediate";
           document.getElementById("levelBadge").innerText = `${currentChapter} | Level: ${currentLevel}`;
           switchPhase("phase3");
         } catch (error) {
@@ -793,8 +805,14 @@
         }
       }
 
-      async function submitLevelTest() {
-        const answersArr = Object.values(levelTestSelections);
+      async function submitSubjectLevel(subject) {
+        let answersArr = [];
+        if (subject === "Science") {
+            answersArr = [levelTestSelections[0], levelTestSelections[1], levelTestSelections[2], levelTestSelections[3]].filter(v => v !== undefined);
+        } else {
+            answersArr = [levelTestSelections[4], levelTestSelections[5], levelTestSelections[6], levelTestSelections[7]].filter(v => v !== undefined);
+        }
+
         if (answersArr.length === 0) answersArr.push(2);
 
         try {
@@ -804,25 +822,28 @@
             body: JSON.stringify({ answers: answersArr }),
           });
           const data = await res.json();
-          currentLevel = data.level || "Intermediate";
+          let calculatedLevel = data.level || "Intermediate";
 
-          // Save to user profile via Auth endpoint
           const userId = localStorage.getItem('prism_user_id');
           if (userId) {
               await fetch(`${API_URL}/auth/update-level`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ user_id: userId, level: currentLevel })
+                  body: JSON.stringify({ user_id: userId, subject: subject, level: calculatedLevel })
               });
-              localStorage.setItem('prism_user_level', currentLevel);
+              let localKey = subject.toLowerCase() === "science" ? "prism_science_level" : "prism_social_science_level";
+              localStorage.setItem(localKey, calculatedLevel);
+          }
+
+          if (subject === "Science") {
+              alert(`Science Calibration Complete! Level: ${calculatedLevel}`);
+          } else {
+              alert(`Social Science Calibration Complete! Level: ${calculatedLevel}`);
+              window.location.reload();
           }
         } catch (e) {
-          currentLevel = "Intermediate";
+          if (subject === "Social Science") window.location.reload();
         }
-
-        // Return to Phase 1a logic so the user can select a grade and continue learning
-        alert(`Calibration Complete! You are classified as: ${currentLevel}`);
-        window.location.reload(); // Reload to hit the initialization logic cleanly
       }
 
       // --- AI RAG FETCH ---

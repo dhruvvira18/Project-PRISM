@@ -68,6 +68,7 @@ class AuthLogin(BaseModel):
 
 class AuthUpdateLevel(BaseModel):
     user_id: str
+    subject: str
     level: str
 
 # --- AUTHENTICATION ENDPOINTS ---
@@ -95,15 +96,14 @@ async def signup(data: AuthSignup):
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(data.password.encode('utf-8'), salt).decode('utf-8')
 
-    # Insert new user with 'Pending' grade so they take the calibration test
+    # Insert new user with 'Pending' subject levels so they take the calibration test
     new_user = {
         "email": data.email,
         "password_hash": hashed,
-        "grade": "Pending",
+        "science_level": "Pending",
+        "social_science_level": "Pending",
         "total_points": 0,
         "current_streak": 0
-        # name isn't in the schema per test script, ignoring name for now or could store in a profiles table if needed.
-        # since it's just a hackathon/proto app, if we really need it we would alter the table, but let's stick to what we know.
     }
 
     res = supabase.table("users").insert(new_user).execute()
@@ -111,7 +111,12 @@ async def signup(data: AuthSignup):
         raise HTTPException(status_code=500, detail="Failed to create user")
 
     user = res.data[0]
-    return {"id": user["id"], "email": user["email"], "grade": user["grade"]}
+    return {
+        "id": user["id"],
+        "email": user["email"],
+        "science_level": user["science_level"],
+        "social_science_level": user["social_science_level"]
+    }
 
 @app.post("/auth/login")
 async def login(data: AuthLogin):
@@ -128,18 +133,25 @@ async def login(data: AuthLogin):
     if not bcrypt.checkpw(data.password.encode('utf-8'), hashed_password.encode('utf-8')):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    return {"id": user["id"], "email": user["email"], "grade": user.get("grade", "Pending")}
+    return {
+        "id": user["id"],
+        "email": user["email"],
+        "science_level": user.get("science_level", "Pending"),
+        "social_science_level": user.get("social_science_level", "Pending")
+    }
 
 @app.post("/auth/update-level")
 async def update_level(data: AuthUpdateLevel):
     if not supabase:
         raise HTTPException(status_code=500, detail="Database not configured")
 
-    res = supabase.table("users").update({"grade": data.level}).eq("id", data.user_id).execute()
+    column_name = "science_level" if data.subject.lower() == "science" else "social_science_level"
+
+    res = supabase.table("users").update({column_name: data.level}).eq("id", data.user_id).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="User not found or update failed")
 
-    return {"success": True, "grade": res.data[0]["grade"]}
+    return {"success": True, column_name: res.data[0][column_name]}
 
 # --- SUPABASE DYNAMIC ENDPOINTS (WITH SAFE FALLBACKS) ---
 
@@ -179,11 +191,16 @@ async def get_chapters(grade: str = Query(...), subject: str = Query(...)):
 async def get_level_test():
     if not supabase:
         return {"questions": []}
-    # Fetch all general calibration questions from DB (subject parameter is no longer used)
-    res = supabase.table("calibration_questions").select("*").execute()
-    if not res.data:
+
+    res_science = supabase.table("calibration_questions").select("*").eq("subject", "Science").execute()
+    res_social = supabase.table("calibration_questions").select("*").eq("subject", "Social Science").execute()
+
+    questions = (res_science.data or []) + (res_social.data or [])
+
+    if not questions:
         return JSONResponse(status_code=404, content={"error": "No calibration questions found."})
-    return {"questions": res.data}
+
+    return {"questions": questions}
 
 @app.post("/calculate-level")
 async def calculate_level(data: LevelAnswers):
