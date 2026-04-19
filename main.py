@@ -3,6 +3,7 @@ import statistics
 import chromadb
 import json
 import logging
+import re
 from fastapi import FastAPI, Query, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -54,12 +55,17 @@ class LevelAnswers(BaseModel):
 
 # --- SUPABASE DYNAMIC ENDPOINTS (WITH SAFE FALLBACKS) ---
 
+def extract_number(text):
+    match = re.search(r'\d+', text)
+    return int(match.group()) if match else float('inf')
+
 @app.get("/grades")
 async def get_grades():
     default_grades = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10"]
     if supabase:
         res = supabase.table("syllabus").select("grade").execute()
-        unique_grades = sorted(list(set([row["grade"] for row in res.data])))
+        unique_grades = list(set([row["grade"] for row in res.data]))
+        unique_grades.sort(key=extract_number)
         # If Supabase has data, use it. Otherwise, fallback to default.
         if len(unique_grades) > 0:
             return {"grades": unique_grades}
@@ -80,10 +86,9 @@ async def get_chapters(grade: str = Query(...), subject: str = Query(...)):
     # Fallback to a generic list if Supabase isn't populated for this subject yet
     default_chapters = ["Chapter 1", "Chapter 2", "Chapter 3", "Chapter 4", "Chapter 5"]
     if supabase:
-        # Avoid alphabetical sorting to preserve syllabus order. Since dictionaries preserve order since Python 3.7
-        # we can use dict.fromkeys to remove duplicates while maintaining the order returned by the query.
         res = supabase.table("syllabus").select("chapter_name").eq("grade", grade).eq("subject", subject).execute()
-        unique_chapters = list(dict.fromkeys([row["chapter_name"] for row in res.data]))
+        unique_chapters = list(set([row["chapter_name"] for row in res.data]))
+        unique_chapters.sort(key=extract_number)
         if len(unique_chapters) > 0:
             return {"subject": subject, "chapters": unique_chapters}
     return {"subject": subject, "chapters": default_chapters}

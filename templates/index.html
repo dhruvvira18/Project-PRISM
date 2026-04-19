@@ -1173,7 +1173,7 @@
                 <i class="fas fa-volume-up speaker-icon" id="audio-play-${index}" onclick="toggleAudio('audio-text-${index}', ${index})" title="Play/Pause"></i>
                 <i class="fas fa-undo speaker-icon" onclick="restartAudio('audio-text-${index}', ${index})" title="Restart" style="margin-left:10px; font-size: 1rem;"></i>
                 <i class="fas fa-stop speaker-icon" onclick="stopAudio()" title="Stop" style="margin-left:10px; font-size: 1rem;"></i>
-                <select id="audio-speed-select" onchange="changeAudioSpeed(this.value)" style="margin-left: 10px; border: none; background: transparent; color: var(--primary-blue); font-weight: bold; cursor: pointer; outline: none; font-size: 0.9rem;">
+                    <select class="audio-speed-select" onchange="changeAudioSpeed(this.value)" style="margin-left: 10px; border: none; background: transparent; color: var(--primary-blue); font-weight: bold; cursor: pointer; outline: none; font-size: 0.9rem;">
                   <option value="0.5" ${prismAudioSpeed === 0.5 ? 'selected' : ''}>0.5x</option>
                   <option value="0.75" ${prismAudioSpeed === 0.75 ? 'selected' : ''}>0.75x</option>
                   <option value="0.9" ${prismAudioSpeed === 0.9 ? 'selected' : ''}>0.9x</option>
@@ -1240,9 +1240,15 @@
 
       function changeAudioSpeed(speed) {
         prismAudioSpeed = parseFloat(speed);
+
+        // Update all other dropdowns to match
+        document.querySelectorAll('.audio-speed-select').forEach(select => {
+          select.value = speed;
+        });
+
         if (prismSpeakingIndex !== -1 && speechSynthesis.speaking) {
           // Restart audio with new speed if it's currently playing
-          const currentElementId = document.querySelector(`#audio-play-${prismSpeakingIndex}`).closest('h3').nextElementSibling.id;
+          const currentElementId = `audio-text-${prismSpeakingIndex}`;
           const wasPaused = speechSynthesis.paused;
           speechSynthesis.cancel();
           playAudio(currentElementId, prismSpeakingIndex);
