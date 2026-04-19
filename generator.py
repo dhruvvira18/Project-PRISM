@@ -21,6 +21,7 @@ def get_prism_content_from_db(user_query: str, student_level: str, subject: str,
 
     # --- RULE: PRE-DEFINED ADHD REDIRECT ---
     redirect_response = {
+        "type": "redirect",
         "title": "Let's Stay on Track!",
         "flashcards": [
             {
@@ -109,6 +110,7 @@ def get_prism_content_from_db(user_query: str, student_level: str, subject: str,
 
     RETURN ONLY VALID JSON:
     {{
+      "type": "lesson",
       "title": "SHORT TITLE (2-3 words max)",
       "flashcards": [
         {{
@@ -146,6 +148,7 @@ def get_prism_content_from_db(user_query: str, student_level: str, subject: str,
     except Exception as api_error:
         logging.error(f"Gemini API Down/Failed: {api_error}")
         return {
+            "type": "system",
             "title": "Network Hiccup! 🛑",
             "flashcards": [
                 {
@@ -176,6 +179,7 @@ def get_prism_content_from_db(user_query: str, student_level: str, subject: str,
     except Exception as parse_error:
         logging.error(f"Failed to parse Gemini output: {parse_error}\nRaw Text: {response.text}")
         return {
+            "type": "system",
             "title": "Brain Misfire! ⚡",
             "flashcards": [{
                 "title": "Formatting Glitch",

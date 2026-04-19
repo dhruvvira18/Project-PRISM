@@ -54,6 +54,12 @@ except Exception:
 class LevelAnswers(BaseModel):
     answers: list[int]
 
+class SessionStats(BaseModel):
+    user_id: str
+    topics_learned: int
+    quiz_correct: int
+    session_minutes: int
+
 # --- SUPABASE DYNAMIC ENDPOINTS (WITH SAFE FALLBACKS) ---
 
 @app.get("/grades")
@@ -163,6 +169,79 @@ async def get_session_stats():
         "session_minutes": 0,
         "next_milestone": "Learn your first topic to unlock 'Knowledge Seeker' badge! 🎓"
     }
+
+# --- GAMIFICATION BADGE LOGIC ---
+def check_badges(stats: SessionStats) -> list[str]:
+    """
+    Checks if a user has earned any new badges based on their current stats.
+    Returns a list of newly earned badge names.
+    """
+    if not supabase:
+        logging.warning("Supabase not connected. Skipping badge check.")
+        return []
+
+    new_badges_earned = []
+    try:
+        # 1. Fetch all possible badges
+        badges_res = supabase.table("badges").select("*").execute()
+        all_badges = badges_res.data
+
+        if not all_badges:
+            return []
+
+        # 2. Fetch the badges the user already has
+        user_badges_res = supabase.table("user_badges").select("badge_id").eq("user_id", stats.user_id).execute()
+        earned_badge_ids = {row["badge_id"] for row in user_badges_res.data}
+
+        # 3. Check conditions and insert new badges
+        for badge in all_badges:
+            badge_id = badge["id"]
+            if badge_id in earned_badge_ids:
+                continue # User already has this badge
+
+            cond_type = badge.get("condition_type")
+            cond_value = badge.get("condition_value", 0)
+
+            earned = False
+            if cond_type == "topics_learned" and stats.topics_learned >= cond_value:
+                earned = True
+            elif cond_type == "quiz_correct" and stats.quiz_correct >= cond_value:
+                earned = True
+            elif cond_type == "session_minutes" and stats.session_minutes >= cond_value:
+                earned = True
+
+            if earned:
+                # 4. Insert into user_badges
+                supabase.table("user_badges").insert({
+                    "user_id": stats.user_id,
+                    "badge_id": badge_id
+                }).execute()
+                new_badges_earned.append(badge["name"])
+                logging.info(f"User {stats.user_id} earned badge: {badge['name']}")
+
+    except Exception as e:
+        logging.error(f"Error checking badges: {e}")
+
+    return new_badges_earned
+
+@app.post("/check-badges")
+async def check_badges_endpoint(stats: SessionStats):
+    """Endpoint triggered by frontend to check and award badges."""
+    new_badges = check_badges(stats)
+    return {"new_badges": new_badges}
+
+@app.get("/user-badges/{user_id}")
+async def get_user_badges(user_id: str):
+    """Example endpoint to fetch a user's badges."""
+    if not supabase:
+        return JSONResponse(status_code=500, content={"error": "Supabase not configured."})
+
+    try:
+        res = supabase.table("user_badges").select("badge_id, earned_at, badges(name, description)").eq("user_id", user_id).execute()
+        return {"user_id": user_id, "badges": res.data}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
 
 # --- AI CORE ENDPOINT ---
 
