@@ -88,68 +88,22 @@ async def get_chapters(grade: str = Query(...), subject: str = Query(...)):
     return {"subject": subject, "chapters": default_chapters}
 
 @app.get("/level-test")
-async def get_level_test(subject: str = Query(...)):
-    if subject.upper() == "BYOM":
-        return {
-            "subject": "BYOM",
-            "questions": [
-                {
-                    "question": "What type of content helps you learn best: diagrams, definitions, stories, or examples?",
-                    "options": [
-                        "A. Diagrams",
-                        "B. Definitions",
-                        "C. Stories",
-                        "D. Examples"
-                    ],
-                    "difficulty": 2
-                },
-                {
-                    "question": "When you see a new topic, do you prefer a short summary or step-by-step notes?",
-                    "options": [
-                        "A. Short summary",
-                        "B. Step-by-step notes",
-                        "C. A story",
-                        "D. A diagram"
-                    ],
-                    "difficulty": 2
-                },
-                {
-                    "question": "If something feels too hard, would you rather get a simpler hint or a concrete example?",
-                    "options": [
-                        "A. Simpler hint",
-                        "B. Concrete example",
-                        "C. Longer explanation",
-                        "D. Skip it",
-                    ],
-                    "difficulty": 2
-                },
-                {
-                    "question": "Do you feel more confident when the answer is shown with a quick list or a short story?",
-                    "options": [
-                        "A. Quick list",
-                        "B. Short story",
-                        "C. Diagram only",
-                        "D. No preference"
-                    ],
-                    "difficulty": 2
-                }
-            ]
-        }
+async def get_level_test():
     if not supabase:
-        return {"subject": subject, "questions": []}
-    res = supabase.table("calibration_questions").select("*").eq("subject", subject).execute()
+        return {"questions": []}
+    res = supabase.table("calibration_questions").select("*").execute()
     if not res.data:
         return JSONResponse(status_code=404, content={"error": "No calibration questions found."})
-    return {"subject": subject, "questions": res.data}
+    return {"questions": res.data}
 
 @app.post("/calculate-level")
 async def calculate_level(data: LevelAnswers):
     if not data.answers:
         return {"level": "Intermediate", "median_score": 3}
     med = statistics.median(data.answers)
-    if med <= 2: return {"level": "Beginner", "median_score": med}
-    elif med <= 3: return {"level": "Intermediate", "median_score": med}
-    return {"level": "Advanced", "median_score": med}
+    if med <= 1.5: return {"level": "Advanced", "median_score": med}
+    elif med <= 2.5: return {"level": "Intermediate", "median_score": med}
+    return {"level": "Beginner", "median_score": med}
 
 # --- RESTORED SESSION STATS ---
 @app.get("/session-stats")

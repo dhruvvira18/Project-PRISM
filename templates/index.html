@@ -628,7 +628,7 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('flow') === 'calibration') {
-            loadLevelTest("BYOM");
+            loadLevelTest();
         }
       };
 
@@ -677,7 +677,9 @@
             btn.innerText = chap;
             btn.onclick = () => {
               currentChapter = chap;
-              loadLevelTest(subject);
+              currentLevel = localStorage.getItem('prism_user_level') || 'Intermediate';
+              document.getElementById('levelBadge').innerText = `${currentChapter} | Level: ${currentLevel}`;
+              switchPhase('phase3');
             };
             container.appendChild(btn);
           });
@@ -687,13 +689,13 @@
       }
 
       // --- LEVEL TEST ---
-      async function loadLevelTest(subject) {
+      async function loadLevelTest() {
         switchPhase("phase2");
         levelTestSelections = {};
         currentTestIndex = 0;
         try {
           const res = await fetch(
-            `${API_URL}/level-test?subject=${encodeURIComponent(subject)}`,
+            `${API_URL}/level-test`,
           );
           const data = await res.json();
           levelTestQuestions = data.questions;
@@ -708,7 +710,7 @@
         }
       }
 
-      function renderTestQuestion() {
+function renderTestQuestion() {
         const container = document.getElementById("levelTestArea");
         container.innerHTML = "";
         if (currentTestIndex >= levelTestQuestions.length) {
@@ -724,20 +726,23 @@
         block.className = "level-q-container";
         block.innerHTML = `<h4 class="mb-4">${q.question}</h4>`;
 
+        let options = q.options;
+        if (typeof options === "string") {
+            try {
+                options = JSON.parse(options);
+            } catch (e) {
+                options = [];
+            }
+        }
 
-        // Parse options from JSONB if necessary
-        const options = typeof q.options === "string" ? JSON.parse(q.options) : q.options;
         const shuffledOptions = [...options].sort(() => Math.random() - 0.5);
 
         shuffledOptions.forEach((opt) => {
           const btn = document.createElement("button");
           btn.className = "level-option";
-          // Fix: if opt is a string (like from BYOM test), just use it.
-          // The BYOM endpoint returns strings like "A. Diagrams" and difficulty=2
-          const isString = typeof opt === 'string';
-          btn.innerText = isString ? opt : opt.text;
+          btn.innerText = opt.text;
           btn.onclick = () => {
-            levelTestSelections[currentTestIndex] = isString ? 2 : opt.difficulty;
+            levelTestSelections[currentTestIndex] = opt.difficulty;
             setTimeout(() => {
               currentTestIndex++;
               renderTestQuestion();
@@ -782,8 +787,10 @@
           await response.json();
           currentGrade = "BYOM";
           currentSubject = "BYOM";
-          currentChapter = "Uploaded Document";
-          loadLevelTest("BYOM");
+          currentChapter = \"Uploaded Document\";
+          currentLevel = localStorage.getItem('prism_user_level') || 'Intermediate';
+          document.getElementById('levelBadge').innerText = `${currentChapter} | Level: ${currentLevel}`;
+          switchPhase('phase3');
         } catch (error) {
           alert(`Upload failed: ${error.message}`);
         } finally {
@@ -792,7 +799,7 @@
         }
       }
 
-      async function submitLevelTest() {
+async function submitLevelTest() {
         const answersArr = Object.values(levelTestSelections);
         if (answersArr.length === 0) answersArr.push(2);
         try {
@@ -829,7 +836,7 @@
             window.history.replaceState({}, document.title, "/");
             switchPhase("phase1a");
         } else {
-            switchPhase("phase3");
+            switchPhase("phase1a");
         }
       }
 
