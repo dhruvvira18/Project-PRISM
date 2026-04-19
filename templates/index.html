@@ -364,40 +364,128 @@
         box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
       }
 
+      /* Custom Dropdown */
+      .custom-dropdown-container {
+        position: relative;
+        max-width: 400px;
+        margin: 20px auto;
+        text-align: left;
+      }
+      .custom-dropdown-header {
+        border: 2px solid var(--primary-blue);
+        border-radius: 20px;
+        padding: 1rem 1.5rem;
+        font-size: 1.2rem;
+        background: white;
+        color: var(--text-dark);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: var(--card-shadow);
+        transition: all 0.2s ease;
+      }
+      .custom-dropdown-header:hover {
+        box-shadow: 0 12px 28px -5px rgba(0, 0, 0, 0.08);
+      }
+      .custom-dropdown-list {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        margin-top: 5px;
+        max-height: 300px;
+        overflow-y: auto;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+        display: none;
+      }
+      .custom-dropdown-list.show {
+        display: block;
+      }
+      .custom-dropdown-search {
+        width: 100%;
+        padding: 12px 15px;
+        border: none;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 1rem;
+        outline: none;
+        background: #fdfcf8;
+      }
+      .custom-dropdown-item {
+        padding: 12px 15px;
+        cursor: pointer;
+        font-size: 1.1rem;
+        color: var(--text-dark);
+        transition: background 0.2s;
+      }
+      .custom-dropdown-item:hover {
+        background: #edf2f7;
+        color: var(--primary-blue);
+      }
+      .custom-dropdown-item.selected {
+        background: var(--primary-blue);
+        color: white;
+      }
+
       /* --- Diagram & SVG Animations --- */
       .diagram-element {
         opacity: 0;
         transition: opacity 0.5s ease-in-out;
       }
 
-      .arrow-motion-x {
-        animation: arrowMoveX 1.5s infinite alternate ease-in-out;
-      }
-      .arrow-motion-y {
-        animation: arrowMoveY 1.5s infinite alternate ease-in-out;
-      }
-
-      @keyframes arrowMoveX {
-        from {
-          transform: translateX(0px);
-        }
-        to {
-          transform: translateX(5px);
-        }
-      }
-      @keyframes arrowMoveY {
-        from {
-          transform: translateY(0px);
-        }
-        to {
-          transform: translateY(5px);
-        }
-      }
-
-      .svg-container {
+      .flowchart-container {
         border: 2px dashed #e2e8f0;
         border-radius: 16px;
-        padding: 1rem;
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: white;
+      }
+
+      .flowchart-node {
+        background: #F8FAFC;
+        border: 2px solid var(--text-dark);
+        border-radius: 8px;
+        padding: 15px 25px;
+        font-weight: 700;
+        color: var(--text-dark);
+        text-align: center;
+        max-width: 80%;
+        word-wrap: break-word;
+      }
+
+      .flowchart-arrow-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 10px 0;
+      }
+
+      .flowchart-arrow-line {
+        width: 3px;
+        height: 30px;
+        background-color: var(--primary-blue);
+        position: relative;
+      }
+
+      .flowchart-arrow-head {
+        width: 0;
+        height: 0;
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 8px solid var(--primary-blue);
+      }
+
+      .flowchart-arrow-label {
+        font-size: 0.85rem;
+        color: var(--primary-blue);
+        font-weight: 700;
+        margin: 5px 0;
       }
 
       @keyframes float-up {
@@ -444,7 +532,19 @@
         <p class="text-muted" style="font-size: 1.2rem">
           What are we focusing on today?
         </p>
-        <div id="chapterButtons" class="subject-grid"></div>
+        <div class="custom-dropdown-container" id="chapterDropdownContainer">
+          <div class="custom-dropdown-header" id="chapterDropdownHeader" onclick="toggleDropdown()">
+            <span id="selectedChapterText">Choose a chapter...</span>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="custom-dropdown-list" id="chapterDropdownList">
+            <input type="text" class="custom-dropdown-search" id="chapterSearchInput" placeholder="Search chapters..." onkeyup="filterChapters()" onclick="event.stopPropagation()">
+            <div id="chapterListItems"></div>
+          </div>
+        </div>
+        <button id="startLearningBtn" class="btn-subject" style="background: var(--primary-blue); color: white; opacity: 0.5; cursor: not-allowed; display: block; margin: 20px auto; max-width: 400px; width: 100%; border-radius: 12px; font-size: 1.1rem; padding: 0.8rem;" disabled onclick="startChapterLearning()">
+          Start Learning
+        </button>
       </div>
 
       <div id="phase-byom" class="phase text-center">
@@ -651,6 +751,62 @@
         }
       }
 
+      let allChaptersData = [];
+
+      function toggleDropdown() {
+        document.getElementById("chapterDropdownList").classList.toggle("show");
+        const searchInput = document.getElementById("chapterSearchInput");
+        if (document.getElementById("chapterDropdownList").classList.contains("show")) {
+          searchInput.focus();
+        }
+      }
+
+      function filterChapters() {
+        const query = document.getElementById("chapterSearchInput").value.toLowerCase();
+        const items = document.querySelectorAll(".custom-dropdown-item");
+        items.forEach(item => {
+          if (item.innerText.toLowerCase().includes(query)) {
+            item.style.display = "block";
+          } else {
+            item.style.display = "none";
+          }
+        });
+      }
+
+      function selectChapter(chap) {
+        currentChapter = chap;
+        document.getElementById("selectedChapterText").innerText = chap;
+        document.getElementById("chapterDropdownList").classList.remove("show");
+
+        // Highlight selected
+        document.querySelectorAll(".custom-dropdown-item").forEach(item => {
+          if (item.innerText === chap) {
+            item.classList.add("selected");
+          } else {
+            item.classList.remove("selected");
+          }
+        });
+
+        // Enable Start Learning button
+        const startBtn = document.getElementById("startLearningBtn");
+        startBtn.disabled = false;
+        startBtn.style.opacity = 1;
+        startBtn.style.cursor = "pointer";
+      }
+
+      function startChapterLearning() {
+        if (!currentChapter) return;
+        loadLevelTest(currentSubject);
+      }
+
+      // Close dropdown if clicked outside
+      document.addEventListener("click", function(event) {
+        const container = document.getElementById("chapterDropdownContainer");
+        if (container && !container.contains(event.target)) {
+          document.getElementById("chapterDropdownList").classList.remove("show");
+        }
+      });
+
       async function loadChapters(subject) {
         currentSubject = subject;
 
@@ -665,30 +821,36 @@
         currentLevel = subLevel;
         switchPhase("phase1c");
 
+        // Reset dropdown state
+        document.getElementById("selectedChapterText").innerText = "Choose a chapter...";
+        document.getElementById("chapterSearchInput").value = "";
+        const startBtn = document.getElementById("startLearningBtn");
+        startBtn.disabled = true;
+        startBtn.style.opacity = 0.5;
+        startBtn.style.cursor = "not-allowed";
+        currentChapter = "";
+
         try {
           const res = await fetch(
             `${API_URL}/chapters?grade=${encodeURIComponent(currentGrade)}&subject=${encodeURIComponent(subject)}`,
           );
           const data = await res.json();
-          const container = document.getElementById("chapterButtons");
-          container.innerHTML = "";
+          const listItems = document.getElementById("chapterListItems");
+          listItems.innerHTML = "";
 
           if (data.chapters.length === 0) {
-            container.innerHTML =
-              "<p class='text-muted'>No chapters found in Supabase.</p>";
+            listItems.innerHTML =
+              "<div style='padding: 12px; color: var(--text-soft);'>No chapters found.</div>";
             return;
           }
 
-          data.chapters.forEach((chap) => {
-            const btn = document.createElement("button");
-            btn.className = "btn-subject";
-            btn.innerText = chap;
-            btn.onclick = () => {
-              currentChapter = chap;
-              document.getElementById("levelBadge").innerText = `${currentChapter} | Level: ${currentLevel}`;
-              switchPhase("phase3");
-            };
-            container.appendChild(btn);
+          allChaptersData = data.chapters;
+          allChaptersData.forEach((chap) => {
+            const div = document.createElement("div");
+            div.className = "custom-dropdown-item";
+            div.innerText = chap;
+            div.onclick = () => selectChapter(chap);
+            listItems.appendChild(div);
           });
         } catch (e) {
           console.error(e);
@@ -958,48 +1120,52 @@
           .join("");
       }
 
-      // --- SVG DIAGRAM GENERATOR ---
+      // --- HTML/FLEX DIAGRAM GENERATOR ---
       function renderDiagram(visualData) {
         if (!visualData) return "";
-        let svg = `<div class="svg-container" style="max-width: 450px; margin: 0 auto; background: white;">
-                <svg viewBox="0 0 450 450" style="width:100%; display:block; font-family: 'Nunito', sans-serif;">
-                    <defs>
-                        <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-                            <path d="M0,0 L6,3 L0,6 Z" fill="var(--primary-blue)"/>
-                        </marker>
-                    </defs>`;
+        let html = `<div class="flowchart-container">`;
 
-        (visualData.objects || []).forEach((obj) => {
-          svg += `<g id="svg-${obj.id}" class="diagram-element">`;
-          let rectWidth = obj.width || 140;
-          let rectHeight = obj.height || 50;
-          if (obj.shape === "rect") {
-            svg += `<rect x="${obj.x}" y="${obj.y}" width="${rectWidth}" height="${rectHeight}" fill="#F8FAFC" stroke="var(--text-dark)" stroke-width="2.5" rx="8"/>`;
-          } else if (obj.shape === "circle") {
-            svg += `<circle cx="${obj.x}" cy="${obj.y}" r="${obj.r || 30}" fill="#F8FAFC" stroke="var(--text-dark)" stroke-width="2.5"/>`;
+        // Ensure visualData objects are sorted top-down by the 'y' property
+        let sortedObjects = [...(visualData.objects || [])].sort((a, b) => (a.y || 0) - (b.y || 0));
+        let arrows = visualData.arrows || [];
+
+        sortedObjects.forEach((obj, index) => {
+          // Render Node
+          html += `<div id="svg-${obj.id}" class="diagram-element flowchart-node">${obj.label}</div>`;
+
+          // Check if there is an arrow originating from this node.
+          // If the AI generated positional arrows, try to infer the sequence.
+          // Since it's sorted, we can usually just drop an arrow between nodes if it exists in the data.
+          // But to be robust, let's see if we have an arrow mapping.
+          if (index < sortedObjects.length - 1) {
+            // Find arrow that goes down after this node
+            let arr = arrows.find(a => {
+              // Usually the AI generates an arrow with 'from' y > obj.y and 'to' y < nextObj.y
+              // Or we can just pop the next arrow in the sequence
+              return true;
+            });
+            // We just render the arrows in sequence for a vertical flowchart.
+            let arrowData = arrows[index];
+            if (arrowData) {
+              html += `
+                <div id="svg-${arrowData.id}" class="diagram-element flowchart-arrow-container">
+                  <div class="flowchart-arrow-line"></div>
+                  <div class="flowchart-arrow-head"></div>
+                  ${arrowData.label ? `<div class="flowchart-arrow-label">${arrowData.label}</div>` : ''}
+                </div>`;
+            } else {
+               // Fallback default arrow without ID if AI missed it
+              html += `
+                <div class="diagram-element flowchart-arrow-container">
+                  <div class="flowchart-arrow-line"></div>
+                  <div class="flowchart-arrow-head"></div>
+                </div>`;
+            }
           }
-          if (obj.label) {
-            let lx = obj.shape === "rect" ? obj.x + rectWidth / 2 : obj.x;
-            let ly = obj.shape === "rect" ? obj.y + rectHeight / 2 : obj.y;
-            svg += `<text x="${lx}" y="${ly}" font-size="14" fill="var(--text-dark)" text-anchor="middle" dominant-baseline="middle" font-weight="700">${obj.label}</text>`;
-          }
-          svg += `</g>`;
         });
 
-        (visualData.arrows || []).forEach((arr) => {
-          let isVertical = Math.abs(arr.from[0] - arr.to[0]) < 20;
-          let motionClass = isVertical ? "arrow-motion-y" : "arrow-motion-x";
-          svg += `<g id="svg-${arr.id}" class="diagram-element ${motionClass}">`;
-          svg += `<line x1="${arr.from[0]}" y1="${arr.from[1]}" x2="${arr.to[0]}" y2="${arr.to[1]}" stroke="var(--primary-blue)" stroke-width="3" marker-end="url(#arrow)"/>`;
-          if (arr.label) {
-            let lx = (arr.from[0] + arr.to[0]) / 2 + (isVertical ? 30 : 0);
-            let ly = (arr.from[1] + arr.to[1]) / 2 - (isVertical ? 0 : 12);
-            svg += `<text x="${lx}" y="${ly}" font-size="12" fill="var(--primary-blue)" text-anchor="middle" dominant-baseline="middle" font-weight="700">${arr.label}</text>`;
-          }
-          svg += `</g>`;
-        });
-        svg += `</svg></div>`;
-        return svg;
+        html += `</div>`;
+        return html;
       }
 
       function animateDiagram(animationSteps) {
@@ -1044,6 +1210,15 @@
                 <i class="fas fa-volume-up speaker-icon" id="audio-play-${index}" onclick="toggleAudio('audio-text-${index}', ${index})" title="Play/Pause"></i>
                 <i class="fas fa-undo speaker-icon" onclick="restartAudio('audio-text-${index}', ${index})" title="Restart" style="margin-left:10px; font-size: 1rem;"></i>
                 <i class="fas fa-stop speaker-icon" onclick="stopAudio()" title="Stop" style="margin-left:10px; font-size: 1rem;"></i>
+                    <select class="audio-speed-select" onchange="changeAudioSpeed(this.value)" style="margin-left: 10px; border: none; background: transparent; color: var(--primary-blue); font-weight: bold; cursor: pointer; outline: none; font-size: 0.9rem;">
+                  <option value="0.5" ${prismAudioSpeed === 0.5 ? 'selected' : ''}>0.5x</option>
+                  <option value="0.75" ${prismAudioSpeed === 0.75 ? 'selected' : ''}>0.75x</option>
+                  <option value="0.9" ${prismAudioSpeed === 0.9 ? 'selected' : ''}>0.9x</option>
+                  <option value="1" ${prismAudioSpeed === 1 ? 'selected' : ''}>1x</option>
+                  <option value="1.25" ${prismAudioSpeed === 1.25 ? 'selected' : ''}>1.25x</option>
+                  <option value="1.5" ${prismAudioSpeed === 1.5 ? 'selected' : ''}>1.5x</option>
+                  <option value="2" ${prismAudioSpeed === 2 ? 'selected' : ''}>2x</option>
+                </select>
                </div>`
             : "";
 
@@ -1098,6 +1273,28 @@
       // --- PRISM AUDIO ENGINE ---
       let prismUtterance = null;
       let prismSpeakingIndex = -1;
+      let prismAudioSpeed = 0.9;
+
+      function changeAudioSpeed(speed) {
+        prismAudioSpeed = parseFloat(speed);
+
+        // Update all other dropdowns to match
+        document.querySelectorAll('.audio-speed-select').forEach(select => {
+          select.value = speed;
+        });
+
+        if (prismSpeakingIndex !== -1 && speechSynthesis.speaking) {
+          // Restart audio with new speed if it's currently playing
+          const currentElementId = `audio-text-${prismSpeakingIndex}`;
+          const wasPaused = speechSynthesis.paused;
+          speechSynthesis.cancel();
+          playAudio(currentElementId, prismSpeakingIndex);
+          if (wasPaused) {
+             // Let it start then pause immediately
+             setTimeout(() => speechSynthesis.pause(), 50);
+          }
+        }
+      }
 
       function wrapWords(el, prefix) {
         if (el.dataset.wrapped === "true") return;
@@ -1164,7 +1361,7 @@
         speechSynthesis.cancel();
 
         prismUtterance = new SpeechSynthesisUtterance(text);
-        prismUtterance.rate = 0.9;
+        prismUtterance.rate = prismAudioSpeed;
         prismSpeakingIndex = index;
 
         if (playBtn) playBtn.className = "fas fa-pause speaker-icon";
