@@ -594,41 +594,49 @@
       }
 
       // --- INITIALIZATION ---
+      async function loadGrades() {
+        try {
+          const res = await fetch(`${API_URL}/grades`);
+          const data = await res.json();
+          const grades = data.grades || [];
+          const container = document.getElementById("gradeButtons") || document.getElementById("gradesContainer");
+          container.innerHTML = "";
+          grades.forEach((grade) => {
+            const btn = document.createElement("button");
+            btn.className = "prism-card";
+            btn.innerText = grade;
+            btn.onclick = () => selectGrade(grade);
+            container.appendChild(btn);
+          });
+        } catch (e) {
+          const container = document.getElementById("gradeButtons") || document.getElementById("gradesContainer");
+          if (container) container.innerHTML = "<p class='text-danger'>Error loading grades.</p>";
+        }
+      }
+
       window.onload = async () => {
+        console.log('window.onload fired');
+        console.log('user id:', localStorage.getItem('prism_user_id'));
         const userId = localStorage.getItem('prism_user_id');
         if (!userId) {
           window.location.href = '/auth';
           return;
         }
 
-        try {
-          const res = await fetch(`${API_URL}/grades`);
-          const data = await res.json();
-          const container = document.getElementById("gradeButtons");
-          container.innerHTML = "";
-          data.grades.forEach((grade) => {
-            const btn = document.createElement("button");
-            btn.className = "btn-subject";
-            btn.innerText = grade;
-            btn.onclick = () => loadSubjects(grade);
-            container.appendChild(btn);
-          });
-          const byomButton = document.getElementById("byomButton");
-          if (byomButton) {
-            byomButton.onclick = () => switchPhase("phase-byom");
-          }
-          const uploadByomBtn = document.getElementById("uploadByomBtn");
-          if (uploadByomBtn) {
-            uploadByomBtn.onclick = uploadByomDocument;
-          }
-        } catch (e) {
-          document.getElementById("gradeButtons").innerHTML =
-            "<p class='text-danger'>Cannot connect to AI Backend.</p>";
-        }
-
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('flow') === 'calibration') {
+        const flow = urlParams.get('flow');
+
+        loadGrades(); // Start loading grades in the background unconditionally
+
+        if (flow === 'calibration') {
+            console.log("Detected calibration flow, loading level test");
+            document.getElementById("phase1a").classList.remove("active-phase");
+            document.getElementById("phase2").classList.add("active-phase");
+            currentGrade = 'Calibration';
+            currentSubject = 'Calibration';
+            currentChapter = 'Level Test';
             loadLevelTest();
+            return; // We don't need to do anything else right now if we're calibrating
         }
       };
 
@@ -690,10 +698,12 @@
 
       // --- LEVEL TEST ---
       async function loadLevelTest() {
+        console.log("loadLevelTest started...");
         switchPhase("phase2");
         levelTestSelections = {};
         currentTestIndex = 0;
         try {
+          console.log("Fetching calibration questions...");
           const res = await fetch(
             `${API_URL}/level-test`,
           );
@@ -706,6 +716,7 @@
           }
           renderTestQuestion();
         } catch (e) {
+          console.error("loadLevelTest failed", e);
           submitLevelTest();
         }
       }
@@ -787,7 +798,7 @@ function renderTestQuestion() {
           await response.json();
           currentGrade = "BYOM";
           currentSubject = "BYOM";
-          currentChapter = \"Uploaded Document\";
+          currentChapter = "Uploaded Document";
           currentLevel = localStorage.getItem('prism_user_level') || 'Intermediate';
           document.getElementById('levelBadge').innerText = `${currentChapter} | Level: ${currentLevel}`;
           switchPhase('phase3');

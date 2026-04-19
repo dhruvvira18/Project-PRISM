@@ -1,8 +1,8 @@
-import hashlib
 import os
 import statistics
 import chromadb
 import json
+import bcrypt
 import logging
 from fastapi import FastAPI, Query, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -193,7 +193,8 @@ async def check_email(data: AuthCheckEmail):
 async def signup(data: AuthLoginSignup):
     if not supabase:
         return JSONResponse(status_code=500, content={"error": "Supabase not connected."})
-    hashed_pw = hashlib.sha256(data.password.encode()).hexdigest()
+
+    hashed_pw = bcrypt.hashpw(data.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     try:
         res = supabase.table("users").insert({
             "email": data.email,
@@ -213,10 +214,30 @@ async def signup(data: AuthLoginSignup):
 async def login(data: AuthLoginSignup):
     if not supabase:
         return JSONResponse(status_code=500, content={"error": "Supabase not connected."})
-    hashed_pw = hashlib.sha256(data.password.encode()).hexdigest()
-    res = supabase.table("users").select("*").eq("email", data.email).eq("password_hash", hashed_pw).execute()
-    if res.data:
-        return {"user": res.data[0]}
+
+    res = supabase.table("users").select("*").eq("email", data.email).execute()
+    if not res.data:
+        return JSONResponse(status_code=401, content={"error": "Invalid email or password."})
+
+    user = res.data[0]
+    stored_hash = user.get("password_hash", "")
+
+    # Check if legacy SHA256 or bcrypt
+    import hashlib
+    is_valid = False
+
+    # Try bcrypt first
+    if stored_hash.startswith("$2b$") or stored_hash.startswith("$2a$"):
+        if bcrypt.checkpw(data.password.encode('utf-8'), stored_hash.encode('utf-8')):
+            is_valid = True
+    else:
+        # Fallback to SHA256 for existing users
+        legacy_hash = hashlib.sha256(data.password.encode()).hexdigest()
+        if legacy_hash == stored_hash:
+            is_valid = True
+
+    if is_valid:
+        return {"user": user}
     else:
         return JSONResponse(status_code=401, content={"error": "Invalid email or password."})
 
