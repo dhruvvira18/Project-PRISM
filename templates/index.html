@@ -520,7 +520,7 @@
 
       <!-- Navbar/Header with Sidebar Toggle -->
       <div style="position: absolute; top: 20px; left: 140px; z-index: 1000;">
-        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="offcanvas" data-bs-target="#dashboardSidebar" aria-controls="dashboardSidebar" style="border-color: var(--primary-blue); color: var(--primary-blue); border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; background: white; box-shadow: var(--card-shadow);">
+        <button class="btn btn-outline-secondary" type="button" id="dashboardToggleBtn" data-bs-toggle="offcanvas" data-bs-target="#dashboardSidebar" onclick="clearBadgeIndicator()" aria-controls="dashboardSidebar" style="border-color: var(--primary-blue); color: var(--primary-blue); border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; background: white; box-shadow: var(--card-shadow);">
           <i class="fas fa-bars"></i>
         </button>
       </div>
@@ -690,12 +690,150 @@
       let currentStepIndex = 0;
       let animationTimers = [];
 
+
       let sessionStartTime = null;
       let sessionTopicsLearned = 0;
       let sessionQuestionsCorrect = 0;
       let breakReminderShown = false;
+      let earnedBadges = []; // Store fetched earned badges
+      let unacknowledgedBadges = 0; // Store if user has unseen badges
+
 
       const API_URL = ""; // Assuming relative path for FastAPI
+
+
+      // --- BADGE LOGIC ---
+      async function loadBadges() {
+        const userId = localStorage.getItem("prism_user_id");
+        if (!userId) return;
+
+        try {
+            const res = await fetch(`${API_URL}/user/${userId}/badges`);
+            const data = await res.json();
+            if (data.user_badges) {
+                earnedBadges = data.user_badges.map(b => b.badges.name);
+                renderBadges(data.user_badges);
+            }
+        } catch(e) {
+            console.error("Failed to load badges", e);
+        }
+      }
+
+      async function checkAndAwardBadge(badgeName) {
+        if (earnedBadges.includes(badgeName)) return; // Already earned
+
+        const userId = localStorage.getItem("prism_user_id");
+        if (!userId) return;
+
+        try {
+            const res = await fetch(`${API_URL}/user/badges/award`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id: userId, badge_name: badgeName })
+            });
+            const data = await res.json();
+            if (data.success && data.message === "Badge awarded") {
+                earnedBadges.push(badgeName);
+                unacknowledgedBadges++;
+                updateDashboardBadgeIndicator();
+                loadBadges(); // Refresh UI
+            }
+        } catch (e) {
+            console.error("Failed to award badge", e);
+        }
+      }
+
+      function updateDashboardBadgeIndicator() {
+          const btn = document.getElementById("dashboardToggleBtn");
+          let indicator = document.getElementById("badgeIndicator");
+          if (unacknowledgedBadges > 0) {
+              if (!indicator) {
+                  indicator = document.createElement("span");
+                  indicator.id = "badgeIndicator";
+                  indicator.innerText = "!";
+                  indicator.style.position = "absolute";
+                  indicator.style.top = "0px";
+                  indicator.style.right = "0px";
+                  indicator.style.backgroundColor = "red";
+                  indicator.style.color = "white";
+                  indicator.style.borderRadius = "50%";
+                  indicator.style.width = "18px";
+                  indicator.style.height = "18px";
+                  indicator.style.fontSize = "12px";
+                  indicator.style.display = "flex";
+                  indicator.style.alignItems = "center";
+                  indicator.style.justifyContent = "center";
+                  btn.appendChild(indicator);
+                  btn.style.position = "relative";
+              }
+          } else {
+              if (indicator) indicator.remove();
+          }
+      }
+
+      function clearBadgeIndicator() {
+          unacknowledgedBadges = 0;
+          updateDashboardBadgeIndicator();
+      }
+
+
+
+      function renderBadges(userBadges) {
+        let container = document.getElementById("badgesContainer");
+        if (!container) {
+          container = document.createElement("div");
+          container.id = "badgesContainer";
+          container.style.marginTop = "2rem";
+          container.style.borderTop = "1px solid rgba(0,0,0,0.05)";
+          container.style.paddingTop = "1rem";
+
+          const title = document.createElement("h6");
+          title.style.color = "var(--primary-blue)";
+          title.style.fontWeight = "700";
+          title.innerText = "Your Badges";
+          container.appendChild(title);
+
+          const badgeList = document.createElement("div");
+          badgeList.id = "badgeList";
+          badgeList.style.display = "flex";
+          badgeList.style.flexWrap = "wrap";
+          badgeList.style.gap = "10px";
+          badgeList.style.marginTop = "10px";
+          container.appendChild(badgeList);
+
+          const offcanvasBody = document.querySelector(".offcanvas-body");
+          offcanvasBody.appendChild(container);
+        }
+
+        const badgeList = document.getElementById("badgeList");
+        badgeList.innerHTML = "";
+
+        const emojiMap = {
+          "Quiz Starter": "🎯",
+          "Focus Starter": "⏱️",
+          "Knowledge Seeker": "🎓"
+        };
+
+        userBadges.forEach(b => {
+           const badgeName = b.badges.name;
+           const emoji = emojiMap[badgeName] || "🏆";
+
+           const badgeEl = document.createElement("div");
+           badgeEl.style.background = "var(--primary-green)";
+           badgeEl.style.color = "white";
+           badgeEl.style.padding = "8px 12px";
+           badgeEl.style.borderRadius = "20px";
+           badgeEl.style.fontSize = "0.85rem";
+           badgeEl.style.fontWeight = "600";
+           badgeEl.style.display = "flex";
+           badgeEl.style.alignItems = "center";
+           badgeEl.style.gap = "5px";
+           badgeEl.style.boxShadow = "0 2px 5px rgba(0,0,0,0.1)";
+
+           badgeEl.innerText = `${emoji} ${badgeName}`;
+           badgeList.appendChild(badgeEl);
+        });
+      }
 
       // --- SESSION TIMER LOGIC ---
       function startSessionTimer() {
@@ -706,6 +844,11 @@
           const seconds = Math.floor((elapsedMs % 60000) / 1000);
           document.getElementById("sessionTimer").innerText =
             `${minutes}:${seconds.toString().padStart(2, "0")}`;
+          // Focus Starter Badge Logic
+          if (minutes >= 15) {
+            checkAndAwardBadge("Focus Starter");
+          }
+
           if (minutes === 25 && !breakReminderShown) {
             breakReminderShown = true;
             if (
@@ -723,9 +866,24 @@
       function incrementTopicCount() {
         sessionTopicsLearned++;
         document.getElementById("topicsCount").innerText = sessionTopicsLearned;
+
+        let totalTopics = parseInt(localStorage.getItem("prism_total_topics") || "0");
+        totalTopics++;
+        localStorage.setItem("prism_total_topics", totalTopics);
+
+        if (totalTopics >= 5) {
+          checkAndAwardBadge("Knowledge Seeker");
+        }
       }
       function incrementQuestionCount() {
         sessionQuestionsCorrect++;
+        let totalQuizzes = parseInt(localStorage.getItem("prism_total_quizzes") || "0");
+        totalQuizzes++;
+        localStorage.setItem("prism_total_quizzes", totalQuizzes);
+
+        if (totalQuizzes >= 5) {
+          checkAndAwardBadge("Quiz Starter");
+        }
       }
 
       function switchPhase(phaseId) {
@@ -754,6 +912,7 @@
       window.onload = async () => {
         const userId = localStorage.getItem('prism_user_id');
         loadDashboard();
+        loadBadges();
         localStorage.removeItem('prism_current_session_id');
         if (!userId) {
             window.location.href = '/login';
