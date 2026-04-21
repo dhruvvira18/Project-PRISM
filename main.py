@@ -70,6 +70,11 @@ class ChatEntry(BaseModel):
 class LevelAnswers(BaseModel):
     answers: list[int]
 
+class AwardBadge(BaseModel):
+    user_id: str
+    badge_name: str
+
+
 # --- AUTHENTICATION MODELS ---
 class AuthEmailCheck(BaseModel):
     email: str
@@ -334,6 +339,54 @@ async def get_dashboard(user_id: str):
         session["chats"] = chats_by_session.get(str(session["id"]), [])
 
     return {"sessions": sessions}
+
+
+@app.get("/badges")
+async def get_badges():
+    if not supabase:
+        return {"badges": []}
+    res = supabase.table("badges").select("*").execute()
+    return {"badges": res.data}
+
+@app.get("/user/{user_id}/badges")
+async def get_user_badges(user_id: str):
+    if not supabase:
+        return {"user_badges": []}
+
+    res = supabase.table("user_badges").select("*, badges(*)").eq("user_id", user_id).execute()
+    return {"user_badges": res.data}
+
+@app.post("/user/badges/award")
+async def award_badge(data: AwardBadge):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+
+    # Get badge id by name
+    badge_res = supabase.table("badges").select("id").eq("name", data.badge_name).execute()
+    if not badge_res.data:
+        raise HTTPException(status_code=404, detail="Badge not found")
+
+    badge_id = badge_res.data[0]["id"]
+
+    # Check if user already has the badge
+    existing = supabase.table("user_badges").select("*").eq("user_id", data.user_id).eq("badge_id", badge_id).execute()
+    if existing.data:
+        return {"success": True, "message": "Badge already awarded"}
+
+    # Award badge
+    new_user_badge = {
+        "user_id": data.user_id,
+        "badge_id": badge_id
+    }
+
+    try:
+        supabase.table("user_badges").insert(new_user_badge).execute()
+        return {"success": True, "message": "Badge awarded"}
+    except Exception as e:
+        logging.error(f"Failed to award badge: {e}")
+        raise HTTPException(status_code=500, detail="Failed to award badge")
+
+
 
 # --- RESTORED SESSION STATS ---
 @app.get("/session-stats")
