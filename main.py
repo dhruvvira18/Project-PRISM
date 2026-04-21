@@ -64,6 +64,8 @@ class ChatEntry(BaseModel):
     chapter: str
     user_query: str
     ai_response: str
+    concept_title: str | None = None
+    content: str | None = None
 
 class LevelAnswers(BaseModel):
     answers: list[int]
@@ -292,6 +294,17 @@ async def save_chat(data: ChatEntry):
     res = supabase.table("chat_history").insert(new_chat).execute()
     if not res.data:
         raise HTTPException(status_code=500, detail="Failed to save chat")
+
+    if data.concept_title and data.content:
+        new_flashcard = {
+            "user_id": data.user_id,
+            "concept_title": data.concept_title,
+            "content": data.content
+        }
+        try:
+            supabase.table("saved_flashcards").insert(new_flashcard).execute()
+        except Exception as e:
+            logging.error(f"Failed to save flashcard: {e}")
 
     return {"success": True, "chat_id": res.data[0]["id"]}
 

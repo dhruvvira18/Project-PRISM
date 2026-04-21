@@ -503,6 +503,28 @@
   <body>
     <div class="site-logo">PRISM</div>
 
+
+    <!-- Sidebar Dashboard -->
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="dashboardSidebar" aria-labelledby="dashboardSidebarLabel" style="background-color: var(--bg-warm); width: 350px;">
+      <div class="offcanvas-header" style="border-bottom: 1px solid rgba(0,0,0,0.05);">
+        <h5 class="offcanvas-title" id="dashboardSidebarLabel" style="color: var(--primary-blue); font-weight: 700;">Your Learning Journey</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body">
+        <div id="sessionsAccordion" class="accordion accordion-flush">
+          <!-- Sessions dynamically populated here -->
+        </div>
+      </div>
+    </div>
+
+
+      <!-- Navbar/Header with Sidebar Toggle -->
+      <div style="position: absolute; top: 20px; left: 20px; z-index: 1000;">
+        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="offcanvas" data-bs-target="#dashboardSidebar" aria-controls="dashboardSidebar" style="border-color: var(--primary-blue); color: var(--primary-blue); border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; background: white; box-shadow: var(--card-shadow);">
+          <i class="fas fa-bars"></i>
+        </button>
+      </div>
+
     <div class="container main-container">
       <div id="phase1a" class="phase active-phase text-center">
         <div style="height: 80px"></div>
@@ -520,13 +542,7 @@
           </button>
         </div>
 
-        <!-- Dashboard UI for ADHD Users (Minimalist & Clutter-Free) -->
-        <div id="dashboardContainer" style="margin-top: 50px; display: none; text-align: left;">
-          <h3 style="color: var(--primary-blue); font-weight: 700; margin-bottom: 20px;">Your Learning Sessions</h3>
-          <div id="sessionsAccordion" class="accordion">
-            <!-- Sessions will be dynamically populated here -->
-          </div>
-        </div>
+
 
       </div>
 
@@ -1104,7 +1120,9 @@
                   subject: currentSubject,
                   chapter: currentChapter,
                   user_query: input,
-                  ai_response: JSON.stringify(data)
+                  ai_response: JSON.stringify(data),
+                  concept_title: data.title,
+                  content: JSON.stringify(data)
                 })
               });
             } catch(e) {
@@ -1130,14 +1148,11 @@
           const data = await res.json();
           const sessions = data.sessions || [];
 
-          const container = document.getElementById("dashboardContainer");
           const accordion = document.getElementById("sessionsAccordion");
 
-          if (sessions.length > 0) {
-            container.style.display = "block";
-          } else {
-            container.style.display = "none";
-            return;
+          if (sessions.length === 0) {
+             accordion.innerHTML = "<p class='text-muted mt-3 text-center'>No learning sessions yet. Start exploring!</p>";
+             return;
           }
 
           let html = "";
@@ -1148,14 +1163,17 @@
             const sessionId = `session-${sIndex}`;
 
             html += `
-              <div class="accordion-item" style="border: none; margin-bottom: 15px; border-radius: 12px; overflow: hidden; box-shadow: var(--card-shadow);">
+              <div class="accordion-item" style="border: none; margin-bottom: 10px; border-radius: 8px; overflow: hidden; background: transparent;">
                 <h2 class="accordion-header" id="heading-${sessionId}">
-                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${sessionId}" aria-expanded="false" aria-controls="collapse-${sessionId}" style="background-color: white; color: var(--primary-blue); font-weight: 600; padding: 1.2rem;">
-                    ${date} - ${subject}: ${topic}
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${sessionId}" aria-expanded="false" aria-controls="collapse-${sessionId}" style="background-color: white; color: var(--primary-blue); font-weight: 600; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <div style="display: flex; flex-direction: column;">
+                       <span style="font-size: 0.8rem; color: var(--text-soft);">${date} - ${subject}</span>
+                       <span>${topic}</span>
+                    </div>
                   </button>
                 </h2>
                 <div id="collapse-${sessionId}" class="accordion-collapse collapse" aria-labelledby="heading-${sessionId}" data-bs-parent="#sessionsAccordion">
-                  <div class="accordion-body" style="background-color: var(--bg-warm); padding: 1.5rem;">
+                  <div class="accordion-body" style="padding: 1rem 0.5rem;">
             `;
 
             if (session.chats && session.chats.length > 0) {
@@ -1183,14 +1201,14 @@
                     }
 
                     html += `
-                      <div class="accordion-item" style="border: 1px solid var(--primary-green); border-radius: 8px; margin-bottom: 10px; overflow: hidden;">
+                      <div class="accordion-item" style="border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 8px; overflow: hidden;">
                         <h2 class="accordion-header" id="heading-${chatId}">
-                          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${chatId}" aria-expanded="false" aria-controls="collapse-${chatId}" style="background-color: #f0f7f4; color: var(--text-dark); padding: 1rem;">
-                            Q: ${query}
+                          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${chatId}" aria-expanded="false" aria-controls="collapse-${chatId}" style="background-color: white; color: var(--text-dark); padding: 0.8rem; font-size: 0.9rem;">
+                            ${query}
                           </button>
                         </h2>
                         <div id="collapse-${chatId}" class="accordion-collapse collapse" aria-labelledby="heading-${chatId}" data-bs-parent="#chatsAccordion-${sessionId}">
-                          <div class="accordion-body" style="background-color: white; font-size: 0.95rem;">
+                          <div class="accordion-body" style="background-color: #fafbfc; font-size: 0.85rem; padding: 0.8rem;">
                             ${aiDataStr}
                           </div>
                         </div>
