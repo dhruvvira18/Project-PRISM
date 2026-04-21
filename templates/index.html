@@ -609,12 +609,12 @@
       <div id="phase-history" class="phase">
         <div class="text-center">
           <div style="height: 60px"></div>
-          <h2 class="mb-4" id="historyTopicTitle" style="color: var(--primary-blue); opacity: 0.9">
-            Reviewing Past Topic
-          </h2>
           <button class="btn btn-nav mb-4" onclick="switchPhase('phase1a')" style="border-color: var(--primary-blue); color: var(--primary-blue); border-radius: 8px;">
             <i class="fas fa-arrow-left me-2"></i> Back to Dashboard
           </button>
+          <h2 class="mb-4" id="historyTopicTitle" style="color: var(--primary-blue); opacity: 0.9">
+            Reviewing Past Topic
+          </h2>
         </div>
 
         <div class="answer-section" id="historyAnswerSection" style="display: block;">
@@ -1252,6 +1252,7 @@
 
 
       let historyStepsData = [];
+      let currentHistoryQuiz = null;
 
       function viewHistory(chatDataBase64) {
         try {
@@ -1284,34 +1285,10 @@
             }
 
             if (aiResponse.visual && aiResponse.visual.objects && aiResponse.visual.objects.length > 0) {
-              let html = `<div class="flowchart-container" style="position: relative; width: 100%; height: 300px;">`;
-              const sortedObjects = [...aiResponse.visual.objects].sort((a, b) => a.y - b.y);
-              sortedObjects.forEach((obj, index) => {
-                html += `<div id="svg-${obj.id}" class="diagram-element flowchart-node">${obj.label}</div>`;
-                const arrowData = (aiResponse.visual.arrows || []).find((arr) => arr.from_id === obj.id);
-                if (arrowData) {
-                  html += `
-                    <div id="svg-${arrowData.id}" class="diagram-element flowchart-arrow-container">
-                      <div class="flowchart-arrow-line"></div>
-                      <div class="flowchart-arrow-head"></div>
-                      ${arrowData.label ? `<div class="flowchart-arrow-label">${arrowData.label}</div>` : ''}
-                    </div>`;
-                } else {
-                  if (index < sortedObjects.length - 1) {
-                     html += `
-                        <div class="diagram-element flowchart-arrow-container">
-                          <div class="flowchart-arrow-line"></div>
-                          <div class="flowchart-arrow-head"></div>
-                        </div>`;
-                  }
-                }
-              });
-              html += `</div>`;
               historyStepsData.push({
                 type: "visual",
-                title: aiResponse.visual.title || "Concept Diagram",
-                content: html,
-                rawText: aiResponse.visual.description || "Review this flowchart to understand the steps.",
+                title: "Visual Blueprint",
+                visualData: aiResponse.visual,
                 icon: "fa-project-diagram"
               });
             }
@@ -1335,6 +1312,21 @@
                 title: "Quick Check",
                 content: aiResponse.quiz,
                 icon: "fa-question-circle"
+              });
+            }
+
+            if (aiResponse.key_points && aiResponse.key_points.length > 0) {
+              let listHtml = '<ul class="key-points-list">';
+              aiResponse.key_points.forEach(
+                (kp) => (listHtml += `<li>${clean(kp)}</li>`),
+              );
+              listHtml += "</ul>";
+              historyStepsData.push({
+                type: "revision",
+                title: "📌 Quick Revision",
+                content: listHtml,
+                rawText: aiResponse.key_points.join(" "),
+                icon: "fa-star",
               });
             }
 
@@ -1402,7 +1394,7 @@
           innerContent = `
             <span class="step-indicator">Step ${index + 1} of ${historyStepsData.length}</span>
             <div class="visual-icon"><i class="fas ${stepData.icon}"></i></div>
-            <h3 class="mb-4 text-center">
+            <h3 class="mb-3 d-flex align-items-center justify-content-between">
                 <span>${stepData.title}</span> ${audioHTML}
             </h3>
             <div class="content-text" id="audio-text-${index}-hist">${stepData.content}</div>`;
@@ -1411,17 +1403,21 @@
             <span class="step-indicator">Step ${index + 1} of ${historyStepsData.length}</span>
             <div class="visual-icon"><i class="fas ${stepData.icon}"></i></div>
             <h3 class="mb-3 text-center">${stepData.title}</h3>
-            ${stepData.content}`;
+            ${renderDiagram(stepData.visualData)}`;
+          setTimeout(
+            () => animateDiagram(stepData.visualData.animation_steps),
+            50,
+          );
         } else if (stepData.type === "quiz") {
-          const currentQuiz = stepData.content;
+          currentHistoryQuiz = stepData.content;
           innerContent = `
             <span class="step-indicator">Step ${index + 1} of ${historyStepsData.length}</span>
-            <h3 class="mb-4">${currentQuiz.question}</h3>
+            <h3 class="mb-4">${currentHistoryQuiz.question}</h3>
             <div id="mcqOptionsHist" class="d-flex flex-column gap-3">
-                ${currentQuiz.options
+                ${currentHistoryQuiz.options
                   .map((opt, idx) => {
                     const cleanOpt = opt.replace(/^[A-D][\.\)]\s*/, "");
-                    return `<button class="btn mcq-btn" onclick="checkAnswerHistory(this, \`${opt.replace(/`/g, "'")}\`, \`${currentQuiz.answer.replace(/`/g, "'")}\`, \`${currentQuiz.explanation.replace(/`/g, "'")}\`)"><strong>${["A", "B", "C", "D"][idx]}.</strong> ${clean(cleanOpt)}</button>`;
+                    return `<button class="btn mcq-btn" onclick="checkAnswerHistory(this, \`${opt.replace(/`/g, "'")}\`)"><strong>${["A", "B", "C", "D"][idx]}.</strong> ${clean(cleanOpt)}</button>`;
                   })
                   .join("")}
             </div>
@@ -1442,13 +1438,11 @@
 
         cardContainer.innerHTML = innerContent + navHTML;
         cardContainer.classList.add("active-step");
-
-        if (stepData.type === "visual") {
-            setTimeout(() => drawFlowchartArrows(), 100);
-        }
       }
 
-      function checkAnswerHistory(btn, selectedOption, correctAnswer, explanation) {
+      function checkAnswerHistory(btn, selectedOption) {
+        if (!currentHistoryQuiz) return;
+
         document.querySelectorAll("#mcqOptionsHist .mcq-btn").forEach((b) => {
           b.disabled = true;
           b.classList.remove("correct", "wrong");
@@ -1458,8 +1452,10 @@
         msg.style.display = "block";
 
         const cleanSelected = clean(selectedOption).toLowerCase().trim();
-        const cleanCorrect = clean(correctAnswer).toLowerCase().trim();
+        const cleanCorrect = clean(currentHistoryQuiz.answer || currentHistoryQuiz.correct).toLowerCase().trim();
         const isCorrect = cleanSelected === cleanCorrect || cleanCorrect.includes(cleanSelected) || cleanSelected.includes(cleanCorrect);
+
+        const explanation = currentHistoryQuiz.explanation || "";
 
         if (isCorrect) {
           btn.classList.add("correct");
