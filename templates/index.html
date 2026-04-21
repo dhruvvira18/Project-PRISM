@@ -19,6 +19,54 @@
     <link href="..\..\static\style.css" rel="stylesheet" />
 
     <style>
+      /* --- Sidebar Layout --- */
+      .layout-wrapper {
+        display: flex;
+        min-height: 100vh;
+      }
+      .sidebar {
+        width: 280px;
+        background: #fff;
+        border-right: 1px solid #e2e8f0;
+        padding: 20px;
+        position: fixed;
+        height: 100vh;
+        overflow-y: auto;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.02);
+      }
+      .main-content {
+        flex: 1;
+        margin-left: 280px; /* Leave space for sidebar */
+      }
+      .history-item {
+        padding: 12px 15px;
+        margin-bottom: 8px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: var(--bg-warm);
+        border: 1px solid transparent;
+        font-weight: 600;
+        color: var(--text-dark);
+        font-size: 0.95rem;
+      }
+      .history-item:hover {
+        background: #edf2f7;
+        border-color: var(--primary-blue);
+        color: var(--primary-blue);
+      }
+      .sidebar-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-soft);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 20px;
+        margin-top: 60px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #edf2f7;
+      }
+
       :root {
         /* Color System */
         --bg-warm: #fdfcf8;
@@ -501,9 +549,19 @@
     </style>
   </head>
   <body>
-    <div class="site-logo">PRISM</div>
+  <div class="layout-wrapper">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="site-logo" style="position: static; margin-bottom: 20px;">PRISM</div>
+      <div class="sidebar-title">Previous Topics</div>
+      <div id="historyList">
+        <div class="text-muted" style="font-size: 0.9rem;">Loading history...</div>
+      </div>
+    </div>
 
-    <div class="container main-container">
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="container main-container">
       <div id="phase1a" class="phase active-phase text-center">
         <div style="height: 80px"></div>
         <h2 style="color: var(--primary-blue)">Welcome to PRISM</h2>
@@ -628,7 +686,9 @@
           ></div>
         </div>
       </div>
+      </div>
     </div>
+  </div>
 
     <script>
       // --- GLOBAL STATE ---
@@ -649,8 +709,60 @@
       let sessionTopicsLearned = 0;
       let sessionQuestionsCorrect = 0;
       let breakReminderShown = false;
+      let currentSessionId = null;
 
       const API_URL = ""; // Assuming relative path for FastAPI
+
+      // --- CHAT HISTORY LOGIC ---
+      async function loadChatHistory() {
+        const userId = localStorage.getItem('prism_user_id');
+        if (!userId) return;
+
+        try {
+          const res = await fetch(`${API_URL}/history?user_id=${userId}`);
+          const historyData = await res.json();
+          const listContainer = document.getElementById("historyList");
+          listContainer.innerHTML = "";
+
+          if (!historyData || historyData.length === 0) {
+            listContainer.innerHTML = "<div class='text-muted' style='font-size: 0.9rem;'>No previous topics found.</div>";
+            return;
+          }
+
+          historyData.forEach(item => {
+            const div = document.createElement("div");
+            div.className = "history-item";
+            // Prefer user_query, fallback to subject
+            div.innerText = item.user_query || item.subject;
+            div.onclick = () => loadHistoryItem(item);
+            listContainer.appendChild(div);
+          });
+        } catch (e) {
+          console.error("Failed to load history", e);
+          document.getElementById("historyList").innerHTML = "<div class='text-danger'>Failed to load history.</div>";
+        }
+      }
+
+      function loadHistoryItem(item) {
+        if (!item.ai_response) return;
+        try {
+          const aiData = typeof item.ai_response === "string" ? JSON.parse(item.ai_response) : item.ai_response;
+
+          currentGrade = item.grade || currentGrade;
+          currentSubject = item.subject || currentSubject;
+          currentChapter = item.chapter || currentChapter;
+          currentSessionId = item.session_id;
+
+          document.getElementById("levelBadge").innerText = `${currentChapter} | Level: ${currentLevel}`;
+          switchPhase("phase3");
+
+          buildDynamicSteps(aiData);
+          document.getElementById("answerSection").style.display = "block";
+          showStep(0);
+        } catch (e) {
+          console.error("Failed to parse AI response for history item", e);
+        }
+      }
 
       // --- SESSION TIMER LOGIC ---
       function startSessionTimer() {
@@ -702,6 +814,7 @@
         }
 
         switchPhase("phase1a");
+        loadChatHistory();
 
         try {
           const res = await fetch(`${API_URL}/grades`);
@@ -1023,14 +1136,25 @@
         document.getElementById("loader").style.display = "block";
         document.getElementById("answerSection").style.display = "none";
 
+        const userId = localStorage.getItem('prism_user_id');
+        let url = `${API_URL}/ask?user_query=${encodeURIComponent(input)}&student_level=${currentLevel}&subject=${encodeURIComponent(currentSubject)}&chapter=${encodeURIComponent(currentChapter)}`;
+        if (userId) {
+            url += `&user_id=${encodeURIComponent(userId)}`;
+        }
+        if (currentSessionId) {
+            url += `&session_id=${encodeURIComponent(currentSessionId)}`;
+        }
+
         try {
-          // Passes the new subject and chapter parameters
-          const response = await fetch(
-            `${API_URL}/ask?user_query=${encodeURIComponent(input)}&student_level=${currentLevel}&subject=${encodeURIComponent(currentSubject)}&chapter=${encodeURIComponent(currentChapter)}`,
-          );
+          const response = await fetch(url);
           const data = await response.json();
 
+          if (data.session_id) {
+             currentSessionId = data.session_id;
+          }
+
           buildDynamicSteps(data);
+          loadChatHistory(); // Refresh the sidebar
           incrementTopicCount();
 
           document.getElementById("loader").style.display = "none";

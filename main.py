@@ -5,6 +5,8 @@ import json
 import logging
 import re
 import bcrypt
+import uuid
+from datetime import datetime
 from fastapi import FastAPI, Query, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -261,6 +263,8 @@ async def ask_assistant(
     subject: str = Query(...),
     chapter: str = Query(...),
     grade: str = Query(None),
+    user_id: str = Query(None),
+    session_id: str = Query(None),
 ):
     active_collection = collection
     bypass_metadata = False
@@ -283,6 +287,44 @@ async def ask_assistant(
             active_collection,
             bypass_metadata=bypass_metadata,
         )
+
+        if supabase and user_id:
+            if not session_id:
+                session_id = str(uuid.uuid4())
+                try:
+                    supabase.table("learning_sessions").insert({
+                        "id": session_id,
+                        "user_id": user_id
+                    }).execute()
+                except Exception as e:
+                    logging.warning(f"Failed to create learning session: {e}")
+
+            try:
+                existing = supabase.table("chat_history") \
+                    .select("id") \
+                    .eq("session_id", session_id) \
+                    .eq("user_query", user_query) \
+                    .execute()
+
+                if existing.data:
+                    supabase.table("chat_history") \
+                        .update({"timestamp": datetime.utcnow().isoformat()}) \
+                        .eq("id", existing.data[0]["id"]) \
+                        .execute()
+                else:
+                    supabase.table("chat_history").insert({
+                        "user_id": user_id,
+                        "subject": subject,
+                        "chapter": chapter,
+                        "user_query": user_query,
+                        "ai_response": json.dumps(ai_data),
+                        "session_id": session_id,
+                        "timestamp": datetime.utcnow().isoformat()
+                    }).execute()
+            except Exception as e:
+                logging.error(f"Failed to save chat history: {e}")
+
+        ai_data["session_id"] = session_id
         return JSONResponse(content=ai_data)
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
@@ -300,6 +342,46 @@ async def upload_byom(file: UploadFile = File(...)):
     except Exception as e:
         logging.error(f"BYOM upload failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to process BYOM PDF. Please try again.")
+
+@app.get("/sessions")
+async def get_learning_sessions(user_id: str):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+
+    res = supabase.table("learning_sessions") \
+        .select("*") \
+        .eq("user_id", user_id) \
+        .order("created_at", desc=True) \
+        .execute()
+
+    return res.data
+
+@app.get("/session-history")
+async def get_session_history(session_id: str):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+
+    res = supabase.table("chat_history") \
+        .select("*") \
+        .eq("session_id", session_id) \
+        .order("timestamp", desc=True) \
+        .execute()
+
+    return res.data
+
+@app.get("/history")
+async def get_chat_history(user_id: str, limit: int = 20):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+
+    res = supabase.table("chat_history") \
+        .select("*") \
+        .eq("user_id", user_id) \
+        .order("timestamp", desc=True) \
+        .limit(limit) \
+        .execute()
+
+    return res.data
 
 # --- STATIC FILES ---
 
