@@ -1,0 +1,4 @@
+1. We need a new phase `phase4` (or similar) that will display the full flashcards view for a history item.
+2. In `loadDashboard()`, instead of rendering the AI responses as nested HTML inside the sidebar, we just display the question text.
+3. When clicking on the question in the sidebar, we capture that chat's data. We trigger a function `viewHistoryFlashcards(chatData)` that switches to the new phase, populates the flashcards in a format identical to `buildDynamicSteps`, and displays them.
+4. This new phase should have a "Back to Learning" button which calls `switchPhase('phase1a')` or whatever.

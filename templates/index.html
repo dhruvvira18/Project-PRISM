@@ -605,6 +605,24 @@
         <div id="levelTestArea" class="text-start mt-4"></div>
       </div>
 
+
+      <div id="phase-history" class="phase">
+        <div class="text-center">
+          <div style="height: 60px"></div>
+          <h2 class="mb-4" id="historyTopicTitle" style="color: var(--primary-blue); opacity: 0.9">
+            Reviewing Past Topic
+          </h2>
+          <button class="btn btn-nav mb-4" onclick="switchPhase('phase1a')" style="border-color: var(--primary-blue); color: var(--primary-blue); border-radius: 8px;">
+            <i class="fas fa-arrow-left me-2"></i> Back to Dashboard
+          </button>
+        </div>
+
+        <div class="answer-section" id="historyAnswerSection" style="display: block;">
+          <div class="progress-dots" id="historyProgressDots"></div>
+          <div class="step-card" id="historyCardContainer" style="display: block"></div>
+        </div>
+      </div>
+
       <div id="phase3" class="phase">
         <div class="text-center">
           <div style="height: 60px"></div>
@@ -1189,64 +1207,15 @@
             `;
 
             if (session.chats && session.chats.length > 0) {
-                html += `<div class="accordion" id="chatsAccordion-${sessionId}">`;
+                html += `<div class="list-group list-group-flush">`;
                 session.chats.forEach((chat, cIndex) => {
-                    const chatId = `${sessionId}-chat-${cIndex}`;
                     const query = chat.user_query || "Query";
-                    let aiDataStr = "";
-
-                    try {
-                        let parsed = JSON.parse(chat.ai_response);
-                        if (parsed) {
-                            if (Array.isArray(parsed.flashcards) && parsed.flashcards.length > 0) {
-                                aiDataStr += '<div style="margin-top: 10px;">';
-                                parsed.flashcards.slice(0, 3).forEach((card, idx) => {
-                                    const bullets = Array.isArray(card.bullet_points) ? card.bullet_points.slice(0, 3) : [];
-                                    let listHtml = '<ul class="key-points-list" style="padding-left: 20px; font-size: 0.95rem; line-height: 1.6;">';
-                                    bullets.forEach(point => {
-                                        listHtml += `<li style="margin-bottom: 8px;">${clean(point)}</li>`;
-                                    });
-                                    listHtml += '</ul>';
-
-                                    aiDataStr += `
-                                        <div style="background: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-                                            <h4 style="color: var(--primary-blue); font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px;">
-                                                <i class="fas fa-brain" style="color: var(--primary-green);"></i> ${card.title || `Flashcard ${idx + 1}`}
-                                            </h4>
-                                            ${listHtml}
-                                        </div>
-                                    `;
-                                });
-                                aiDataStr += '</div>';
-                            } else if (parsed.steps) {
-                                aiDataStr = parsed.steps.map(s => {
-                                    if (s.type === 'concept') return `<p><strong>${s.title}</strong>: ${s.content}</p>`;
-                                    if (s.type === 'visual') return `<p><strong>Visual:</strong> <i class="fas ${s.icon}"></i> ${s.title}</p>`;
-                                    if (s.type === 'analogy') return `<p><strong>Analogy:</strong> ${s.content}</p>`;
-                                    if (s.type === 'quiz') return `<p><strong>Quiz:</strong> ${s.question}</p>`;
-                                    return "";
-                                }).join("");
-                            } else {
-                                aiDataStr = "No formatted response available.";
-                            }
-                        }
-                    } catch(e) {
-                        aiDataStr = "No details available.";
-                    }
-
+                    // Store chat data as base64 stringified JSON on the element to avoid quote escaping issues
+                    const chatDataSafe = btoa(encodeURIComponent(JSON.stringify(chat)));
                     html += `
-                      <div class="accordion-item" style="border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 8px; overflow: hidden;">
-                        <h2 class="accordion-header" id="heading-${chatId}">
-                          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${chatId}" aria-expanded="false" aria-controls="collapse-${chatId}" style="background-color: white; color: var(--text-dark); padding: 0.8rem; font-size: 0.9rem;">
-                            ${query}
-                          </button>
-                        </h2>
-                        <div id="collapse-${chatId}" class="accordion-collapse collapse" aria-labelledby="heading-${chatId}" data-bs-parent="#chatsAccordion-${sessionId}">
-                          <div class="accordion-body" style="background-color: #fafbfc; font-size: 0.85rem; padding: 0.8rem;">
-                            ${aiDataStr}
-                          </div>
-                        </div>
-                      </div>
+                      <button type="button" class="list-group-item list-group-item-action" onclick="viewHistory('${chatDataSafe}')" style="border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 8px; font-size: 0.9rem; color: var(--text-dark); background-color: white; padding: 0.8rem;">
+                        ${query}
+                      </button>
                     `;
                 });
                 html += `</div>`;
@@ -1279,6 +1248,230 @@
 
         // Go back to main
         switchPhase('phase1a');
+      }
+
+
+      let historyStepsData = [];
+
+      function viewHistory(chatDataBase64) {
+        try {
+            const chatStr = decodeURIComponent(atob(chatDataBase64));
+            const chat = JSON.parse(chatStr);
+            const aiResponse = JSON.parse(chat.ai_response);
+
+            // Set Title
+            document.getElementById("historyTopicTitle").innerText = chat.user_query || "Reviewing Past Topic";
+
+            // Build history data identical to buildDynamicSteps
+            historyStepsData = [];
+            if (Array.isArray(aiResponse.flashcards) && aiResponse.flashcards.length > 0) {
+              aiResponse.flashcards.slice(0, 3).forEach((card, idx) => {
+                const bullets = Array.isArray(card.bullet_points) ? card.bullet_points.slice(0, 3) : [];
+                let listHtml = '<ul class="key-points-list">';
+                bullets.forEach((point) => {
+                  listHtml += `<li>${clean(point)}</li>`;
+                });
+                listHtml += "</ul>";
+
+                historyStepsData.push({
+                  type: "knowledge",
+                  title: card.title || `Flashcard ${idx + 1}`,
+                  content: listHtml,
+                  rawText: bullets.join(" "),
+                  icon: "fa-brain",
+                });
+              });
+            }
+
+            if (aiResponse.visual && aiResponse.visual.objects && aiResponse.visual.objects.length > 0) {
+              let html = `<div class="flowchart-container" style="position: relative; width: 100%; height: 300px;">`;
+              const sortedObjects = [...aiResponse.visual.objects].sort((a, b) => a.y - b.y);
+              sortedObjects.forEach((obj, index) => {
+                html += `<div id="svg-${obj.id}" class="diagram-element flowchart-node">${obj.label}</div>`;
+                const arrowData = (aiResponse.visual.arrows || []).find((arr) => arr.from_id === obj.id);
+                if (arrowData) {
+                  html += `
+                    <div id="svg-${arrowData.id}" class="diagram-element flowchart-arrow-container">
+                      <div class="flowchart-arrow-line"></div>
+                      <div class="flowchart-arrow-head"></div>
+                      ${arrowData.label ? `<div class="flowchart-arrow-label">${arrowData.label}</div>` : ''}
+                    </div>`;
+                } else {
+                  if (index < sortedObjects.length - 1) {
+                     html += `
+                        <div class="diagram-element flowchart-arrow-container">
+                          <div class="flowchart-arrow-line"></div>
+                          <div class="flowchart-arrow-head"></div>
+                        </div>`;
+                  }
+                }
+              });
+              html += `</div>`;
+              historyStepsData.push({
+                type: "visual",
+                title: aiResponse.visual.title || "Concept Diagram",
+                content: html,
+                rawText: aiResponse.visual.description || "Review this flowchart to understand the steps.",
+                icon: "fa-project-diagram"
+              });
+            }
+
+            if (aiResponse.analogy) {
+              historyStepsData.push({
+                type: "analogy",
+                title: "Real-world Example",
+                content: `<p class="analogy-text" style="font-size: 1.1rem; line-height: 1.6; color: var(--text-dark);">
+                            <i class="fas fa-lightbulb text-warning me-2"></i>
+                            ${aiResponse.analogy}
+                          </p>`,
+                rawText: aiResponse.analogy,
+                icon: "fa-lightbulb"
+              });
+            }
+
+            if (aiResponse.quiz) {
+              historyStepsData.push({
+                type: "quiz",
+                title: "Quick Check",
+                content: aiResponse.quiz,
+                icon: "fa-question-circle"
+              });
+            }
+
+            // Close sidebar
+            const offcanvasEl = document.getElementById('dashboardSidebar');
+            if (offcanvasEl) {
+                const offcanvasInstance = bootstrap.Offcanvas.getInstance(offcanvasEl);
+                if (offcanvasInstance) offcanvasInstance.hide();
+            }
+
+            // Switch Phase
+            switchPhase('phase-history');
+
+            // Build dots and render first step
+            const dotsContainer = document.getElementById("historyProgressDots");
+            dotsContainer.innerHTML = "";
+            historyStepsData.forEach((_, i) => {
+              const dot = document.createElement("div");
+              dot.className = "dot";
+              if (i === 0) dot.classList.add("active");
+              dotsContainer.appendChild(dot);
+            });
+
+            showHistoryStep(0);
+        } catch(e) {
+            console.error("Failed to render history item", e);
+            alert("Could not load this item's details.");
+        }
+      }
+
+      function showHistoryStep(index) {
+        if (index < 0 || index >= historyStepsData.length) return;
+        window.speechSynthesis.cancel();
+        const stepData = historyStepsData[index];
+
+        document.querySelectorAll("#historyProgressDots .dot").forEach((dot, i) => {
+          dot.classList.toggle("active", i <= index);
+        });
+
+        const cardContainer = document.getElementById("historyCardContainer");
+        let innerContent = "";
+
+        if (
+          stepData.type === "knowledge" ||
+          stepData.type === "analogy" ||
+          stepData.type === "revision"
+        ) {
+          let audioHTML = stepData.rawText
+            ? `<div class="audio-controls">
+                <i class="fas fa-volume-up speaker-icon" id="audio-play-${index}-hist" onclick="toggleAudio('audio-text-${index}-hist', ${index})" title="Play/Pause"></i>
+                <i class="fas fa-undo speaker-icon" onclick="restartAudio('audio-text-${index}-hist', ${index})" title="Restart" style="margin-left:10px; font-size: 1rem;"></i>
+                <i class="fas fa-stop speaker-icon" onclick="stopAudio()" title="Stop" style="margin-left:10px; font-size: 1rem;"></i>
+                    <select class="audio-speed-select" onchange="changeAudioSpeed(this.value)" style="margin-left: 10px; border: none; background: transparent; color: var(--primary-blue); font-weight: bold; cursor: pointer; outline: none; font-size: 0.9rem;">
+                  <option value="0.5" ${prismAudioSpeed === 0.5 ? 'selected' : ''}>0.5x</option>
+                  <option value="0.75" ${prismAudioSpeed === 0.75 ? 'selected' : ''}>0.75x</option>
+                  <option value="0.9" ${prismAudioSpeed === 0.9 ? 'selected' : ''}>0.9x</option>
+                  <option value="1" ${prismAudioSpeed === 1 ? 'selected' : ''}>1x</option>
+                  <option value="1.25" ${prismAudioSpeed === 1.25 ? 'selected' : ''}>1.25x</option>
+                  <option value="1.5" ${prismAudioSpeed === 1.5 ? 'selected' : ''}>1.5x</option>
+                  <option value="2" ${prismAudioSpeed === 2 ? 'selected' : ''}>2x</option>
+                </select>
+               </div>`
+            : "";
+
+          innerContent = `
+            <span class="step-indicator">Step ${index + 1} of ${historyStepsData.length}</span>
+            <div class="visual-icon"><i class="fas ${stepData.icon}"></i></div>
+            <h3 class="mb-4 text-center">
+                <span>${stepData.title}</span> ${audioHTML}
+            </h3>
+            <div class="content-text" id="audio-text-${index}-hist">${stepData.content}</div>`;
+        } else if (stepData.type === "visual") {
+          innerContent = `
+            <span class="step-indicator">Step ${index + 1} of ${historyStepsData.length}</span>
+            <div class="visual-icon"><i class="fas ${stepData.icon}"></i></div>
+            <h3 class="mb-3 text-center">${stepData.title}</h3>
+            ${stepData.content}`;
+        } else if (stepData.type === "quiz") {
+          const currentQuiz = stepData.content;
+          innerContent = `
+            <span class="step-indicator">Step ${index + 1} of ${historyStepsData.length}</span>
+            <h3 class="mb-4">${currentQuiz.question}</h3>
+            <div id="mcqOptionsHist" class="d-flex flex-column gap-3">
+                ${currentQuiz.options
+                  .map((opt, idx) => {
+                    const cleanOpt = opt.replace(/^[A-D][\.\)]\s*/, "");
+                    return `<button class="btn mcq-btn" onclick="checkAnswerHistory(this, \`${opt.replace(/`/g, "'")}\`, \`${currentQuiz.answer.replace(/`/g, "'")}\`, \`${currentQuiz.explanation.replace(/`/g, "'")}\`)"><strong>${["A", "B", "C", "D"][idx]}.</strong> ${clean(cleanOpt)}</button>`;
+                  })
+                  .join("")}
+            </div>
+            <div id="mcqMessageHist" class="mt-4 p-3 rounded" style="display: none; font-weight: 600;"></div>`;
+        }
+
+        let navHTML = `<div class="step-nav mt-4 pt-4 border-top">`;
+        if (index > 0)
+          navHTML += `<button class="btn btn-nav" onclick="showHistoryStep(${index - 1})">← Previous</button>`;
+        else navHTML += `<div></div>`;
+
+        if (index < historyStepsData.length - 1) {
+          navHTML += `<button class="btn btn-nav btn-nav-primary" onclick="showHistoryStep(${index + 1})">Next →</button>`;
+        } else {
+          navHTML += `<button class="btn btn-nav" style="color: var(--primary-green); border-color: var(--primary-green);" onclick="switchPhase('phase1a')">Dashboard <i class="fas fa-home ms-2"></i></button>`;
+        }
+        navHTML += `</div>`;
+
+        cardContainer.innerHTML = innerContent + navHTML;
+        cardContainer.classList.add("active-step");
+
+        if (stepData.type === "visual") {
+            setTimeout(() => drawFlowchartArrows(), 100);
+        }
+      }
+
+      function checkAnswerHistory(btn, selectedOption, correctAnswer, explanation) {
+        document.querySelectorAll("#mcqOptionsHist .mcq-btn").forEach((b) => {
+          b.disabled = true;
+          b.classList.remove("correct", "wrong");
+        });
+
+        let msg = document.getElementById("mcqMessageHist");
+        msg.style.display = "block";
+
+        const cleanSelected = clean(selectedOption).toLowerCase().trim();
+        const cleanCorrect = clean(correctAnswer).toLowerCase().trim();
+        const isCorrect = cleanSelected === cleanCorrect || cleanCorrect.includes(cleanSelected) || cleanSelected.includes(cleanCorrect);
+
+        if (isCorrect) {
+          btn.classList.add("correct");
+          msg.innerHTML = `<i class="fas fa-check-circle me-2"></i>Correct! ${explanation}`;
+          msg.style.backgroundColor = "var(--correct-bg)";
+          msg.style.color = "#155724";
+        } else {
+          btn.classList.add("wrong");
+          msg.innerHTML = `<i class="fas fa-times-circle me-2"></i>Incorrect. ${explanation}`;
+          msg.style.backgroundColor = "var(--wrong-bg)";
+          msg.style.color = "#721c24";
+        }
       }
 
       // --- DOM BUILDER ---
