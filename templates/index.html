@@ -794,8 +794,48 @@
         startBtn.style.cursor = "pointer";
       }
 
+
+      async function createSession(topic, subject) {
+        const userId = localStorage.getItem("prism_user_id");
+        if (!userId) return;
+        try {
+          const response = await fetch("/sessions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              topic: topic,
+              subject: subject
+            })
+          });
+          const data = await response.json();
+          if (data.id) {
+            localStorage.setItem("prism_current_session_id", data.id);
+          }
+        } catch (error) {
+          console.error("Error creating session:", error);
+        }
+      }
+
+      function finishSession() {
+         localStorage.removeItem("prism_current_session_id");
+         currentChapter = "";
+         currentSubject = "";
+         document.getElementById("chatBox").innerHTML = `
+            <div class="ai-message prism-animate fade-in" style="animation-delay:0.1s;">
+              <p>Hi! What would you like to learn today?</p>
+            </div>
+         `;
+         document.getElementById("chatInput").value = "";
+         switchPhase("phase1a");
+         loadSessions();
+      }
+
       function startChapterLearning() {
         document.getElementById("levelBadge").innerText = `${currentChapter} | Level: ${currentLevel}`;
+        createSession(currentChapter, currentSubject);
         switchPhase("phase3");
       }
 
@@ -955,6 +995,7 @@
 
           currentLevel = "Advanced";
           document.getElementById("levelBadge").innerText = `${currentChapter} | Level: ${currentLevel}`;
+        createSession(currentChapter, currentSubject);
           switchPhase("phase3");
         } catch (error) {
           alert(`Upload failed: ${error.message}`);
@@ -993,6 +1034,7 @@
 
         if (subject === "BYOM") {
            document.getElementById("levelBadge").innerText = `${currentChapter} | Level: ${currentLevel}`;
+        createSession(currentChapter, currentSubject);
            switchPhase("phase3");
         } else {
            loadChapters(subject);

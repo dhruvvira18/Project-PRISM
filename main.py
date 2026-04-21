@@ -51,6 +51,17 @@ except Exception:
     except Exception:
         collection_byom = None
 
+
+class SessionCreate(BaseModel):
+    user_id: str
+    topic: str
+    subject: str
+
+class ChatHistoryCreate(BaseModel):
+    session_id: str
+    user_query: str
+    ai_response: str
+
 class LevelAnswers(BaseModel):
     answers: list[int]
 
@@ -239,6 +250,72 @@ async def calculate_level(data: LevelAnswers):
     elif avg <= 2.6:
         return {"level": "Intermediate", "average_score": avg}
     return {"level": "Beginner", "average_score": avg}
+
+
+# --- SESSION ENDPOINTS ---
+
+@app.post("/sessions")
+async def create_session(data: SessionCreate):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+
+    new_session = {
+        "user_id": data.user_id,
+        "topic": data.topic,
+        "subject": data.subject
+    }
+
+    res = supabase.table("learning_sessions").insert(new_session).execute()
+    if not res.data:
+        raise HTTPException(status_code=500, detail="Failed to create session")
+
+    return res.data[0]
+
+@app.get("/sessions/{user_id}")
+async def get_user_sessions(user_id: str):
+    if not supabase:
+        return {"sessions": []}
+
+    res = supabase.table("learning_sessions").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
+    return {"sessions": res.data}
+
+@app.post("/chat-history")
+async def add_chat_history(data: ChatHistoryCreate):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+
+    # ai_response might be a JSON string. Parse it if so.
+    try:
+        parsed_response = json.loads(data.ai_response)
+        if isinstance(parsed_response, dict):
+             # Just store the string representation if it's complex, or store the dict if DB supports jsonb
+             # We'll just store the string to be safe with standard text columns
+             ai_text = json.dumps(parsed_response)
+        else:
+             ai_text = str(parsed_response)
+    except json.JSONDecodeError:
+        ai_text = data.ai_response
+
+    new_history = {
+        "session_id": data.session_id,
+        "user_query": data.user_query,
+        "ai_response": ai_text
+    }
+
+    res = supabase.table("chat_history").insert(new_history).execute()
+    if not res.data:
+        raise HTTPException(status_code=500, detail="Failed to add chat history")
+
+    return res.data[0]
+
+@app.get("/chat-history/{session_id}")
+async def get_chat_history(session_id: str):
+    if not supabase:
+        return {"history": []}
+
+    res = supabase.table("chat_history").select("*").eq("session_id", session_id).order("created_at", desc=False).execute()
+    return {"history": res.data}
+
 
 # --- RESTORED SESSION STATS ---
 @app.get("/session-stats")
