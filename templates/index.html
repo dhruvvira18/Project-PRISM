@@ -520,6 +520,15 @@
         </div>
       </div>
 
+
+        <div id="past-sessions-container" style="margin-top: 3rem; text-align: left; max-width: 800px; margin-left: auto; margin-right: auto; display: none;">
+          <h3 style="color: var(--primary-color); margin-bottom: 1rem; font-weight: 500;">Past Sessions</h3>
+          <div class="accordion" id="sessionAccordion">
+            <!-- Sessions injected dynamically -->
+          </div>
+        </div>
+
+      </div>
       <div id="phase1b" class="phase text-center">
         <div style="height: 80px"></div>
         <h2 style="color: var(--primary-blue)">Pick a Subject</h2>
@@ -702,6 +711,7 @@
         }
 
         switchPhase("phase1a");
+        setTimeout(() => loadSessions(), 500);
 
         try {
           const res = await fetch(`${API_URL}/grades`);
@@ -830,6 +840,7 @@
          `;
          document.getElementById("chatInput").value = "";
          switchPhase("phase1a");
+        setTimeout(() => loadSessions(), 500);
          loadSessions();
       }
 
@@ -1304,7 +1315,7 @@
         if (index < dynamicStepsData.length - 1) {
           navHTML += `<button class="btn btn-nav btn-nav-primary" onclick="showStep(${index + 1})">Next →</button>`;
         } else {
-          navHTML += `<button class="btn btn-nav" style="color: var(--primary-green); border-color: var(--primary-green);">Mission Complete <i class="fas fa-check ms-2"></i></button>`;
+          navHTML += `<button class="btn btn-nav" style="color: var(--primary-green); border-color: var(--primary-green);" onclick="finishSession()">Mission Complete <i class="fas fa-check ms-2"></i></button>`;
         }
         navHTML += `</div>`;
 
