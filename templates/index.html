@@ -513,11 +513,21 @@
         <div id="gradeButtons" class="subject-grid">
           <p class="text-muted">Loading grades...</p>
         </div>
+
         <div style="margin-top: 25px;">
           <button id="byomButton" class="btn-subject" style="background: var(--primary-green); color: white; border-color: var(--primary-green);">
             BYOM: Upload PDF
           </button>
         </div>
+
+        <!-- Dashboard UI for ADHD Users (Minimalist & Clutter-Free) -->
+        <div id="dashboardContainer" style="margin-top: 50px; display: none; text-align: left;">
+          <h3 style="color: var(--primary-blue); font-weight: 700; margin-bottom: 20px;">Your Learning Sessions</h3>
+          <div id="sessionsAccordion" class="accordion">
+            <!-- Sessions will be dynamically populated here -->
+          </div>
+        </div>
+
       </div>
 
       <div id="phase1b" class="phase text-center">
@@ -630,6 +640,7 @@
       </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
       // --- GLOBAL STATE ---
       let currentGrade = "";
@@ -696,6 +707,8 @@
       // --- INITIALIZATION ---
       window.onload = async () => {
         const userId = localStorage.getItem('prism_user_id');
+        loadDashboard();
+        localStorage.removeItem('prism_current_session_id');
         if (!userId) {
             window.location.href = '/login';
             return;
@@ -794,7 +807,28 @@
         startBtn.style.cursor = "pointer";
       }
 
-      function startChapterLearning() {
+      async function startChapterLearning() {
+        // Start Session API Call
+        const userId = localStorage.getItem("prism_user_id");
+        if (userId) {
+          try {
+            const res = await fetch(`${API_URL}/session/start`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                user_id: userId,
+                subject: currentSubject,
+                topic: currentChapter
+              })
+            });
+            const data = await res.json();
+            if (data.session_id) {
+              localStorage.setItem("prism_current_session_id", data.session_id);
+            }
+          } catch(e) {
+            console.error("Failed to start session", e);
+          }
+        }
         document.getElementById("levelBadge").innerText = `${currentChapter} | Level: ${currentLevel}`;
         switchPhase("phase3");
       }
@@ -951,9 +985,32 @@
           await response.json();
           currentGrade = "BYOM";
           currentSubject = "BYOM";
-          currentChapter = "Uploaded Document";
+          currentChapter = file.name;
 
           currentLevel = "Advanced";
+
+          // Start Session API Call
+          const userId = localStorage.getItem("prism_user_id");
+          if (userId) {
+            try {
+              const res = await fetch(`${API_URL}/session/start`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  user_id: userId,
+                  subject: currentSubject,
+                  topic: currentChapter
+                })
+              });
+              const data = await res.json();
+              if (data.session_id) {
+                localStorage.setItem("prism_current_session_id", data.session_id);
+              }
+            } catch(e) {
+              console.error("Failed to start BYOM session", e);
+            }
+          }
+
           document.getElementById("levelBadge").innerText = `${currentChapter} | Level: ${currentLevel}`;
           switchPhase("phase3");
         } catch (error) {
@@ -1033,12 +1090,139 @@
           buildDynamicSteps(data);
           incrementTopicCount();
 
+          // Record Chat
+          const userId = localStorage.getItem("prism_user_id");
+          const sessionId = localStorage.getItem("prism_current_session_id");
+          if (userId && sessionId) {
+            try {
+              fetch(`${API_URL}/chat`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  user_id: userId,
+                  session_id: sessionId,
+                  subject: currentSubject,
+                  chapter: currentChapter,
+                  user_query: input,
+                  ai_response: JSON.stringify(data)
+                })
+              });
+            } catch(e) {
+              console.error("Failed to save chat", e);
+            }
+          }
+
           document.getElementById("loader").style.display = "none";
           document.getElementById("answerSection").style.display = "block";
           showStep(0);
         } catch (e) {
           document.getElementById("loader").style.display = "none";
         }
+      }
+
+
+      async function loadDashboard() {
+        const userId = localStorage.getItem("prism_user_id");
+        if (!userId) return;
+
+        try {
+          const res = await fetch(`${API_URL}/dashboard/${userId}`);
+          const data = await res.json();
+          const sessions = data.sessions || [];
+
+          const container = document.getElementById("dashboardContainer");
+          const accordion = document.getElementById("sessionsAccordion");
+
+          if (sessions.length > 0) {
+            container.style.display = "block";
+          } else {
+            container.style.display = "none";
+            return;
+          }
+
+          let html = "";
+          sessions.forEach((session, sIndex) => {
+            const date = new Date(session.created_at).toLocaleDateString();
+            const subject = session.subject || "Topic";
+            const topic = session.topic || "Unknown";
+            const sessionId = `session-${sIndex}`;
+
+            html += `
+              <div class="accordion-item" style="border: none; margin-bottom: 15px; border-radius: 12px; overflow: hidden; box-shadow: var(--card-shadow);">
+                <h2 class="accordion-header" id="heading-${sessionId}">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${sessionId}" aria-expanded="false" aria-controls="collapse-${sessionId}" style="background-color: white; color: var(--primary-blue); font-weight: 600; padding: 1.2rem;">
+                    ${date} - ${subject}: ${topic}
+                  </button>
+                </h2>
+                <div id="collapse-${sessionId}" class="accordion-collapse collapse" aria-labelledby="heading-${sessionId}" data-bs-parent="#sessionsAccordion">
+                  <div class="accordion-body" style="background-color: var(--bg-warm); padding: 1.5rem;">
+            `;
+
+            if (session.chats && session.chats.length > 0) {
+                html += `<div class="accordion" id="chatsAccordion-${sessionId}">`;
+                session.chats.forEach((chat, cIndex) => {
+                    const chatId = `${sessionId}-chat-${cIndex}`;
+                    const query = chat.user_query || "Query";
+                    let aiDataStr = "";
+
+                    try {
+                        let parsed = JSON.parse(chat.ai_response);
+                        if (parsed && parsed.steps) {
+                            aiDataStr = parsed.steps.map(s => {
+                                if (s.type === 'concept') return `<p><strong>${s.title}</strong>: ${s.content}</p>`;
+                                if (s.type === 'visual') return `<p><strong>Visual:</strong> <i class="fas ${s.icon}"></i> ${s.title}</p>`;
+                                if (s.type === 'analogy') return `<p><strong>Analogy:</strong> ${s.content}</p>`;
+                                if (s.type === 'quiz') return `<p><strong>Quiz:</strong> ${s.question}</p>`;
+                                return "";
+                            }).join("");
+                        } else {
+                            aiDataStr = "No formatted response available.";
+                        }
+                    } catch(e) {
+                        aiDataStr = "No details available.";
+                    }
+
+                    html += `
+                      <div class="accordion-item" style="border: 1px solid var(--primary-green); border-radius: 8px; margin-bottom: 10px; overflow: hidden;">
+                        <h2 class="accordion-header" id="heading-${chatId}">
+                          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${chatId}" aria-expanded="false" aria-controls="collapse-${chatId}" style="background-color: #f0f7f4; color: var(--text-dark); padding: 1rem;">
+                            Q: ${query}
+                          </button>
+                        </h2>
+                        <div id="collapse-${chatId}" class="accordion-collapse collapse" aria-labelledby="heading-${chatId}" data-bs-parent="#chatsAccordion-${sessionId}">
+                          <div class="accordion-body" style="background-color: white; font-size: 0.95rem;">
+                            ${aiDataStr}
+                          </div>
+                        </div>
+                      </div>
+                    `;
+                });
+                html += `</div>`;
+            } else {
+                html += `<p class="text-muted" style="margin: 0;">No chat queries in this session.</p>`;
+            }
+
+            html += `
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+
+          accordion.innerHTML = html;
+        } catch (e) {
+          console.error("Failed to load dashboard", e);
+        }
+      }
+
+
+      function finishSession() {
+        // Clear session
+        localStorage.removeItem('prism_current_session_id');
+        // Refresh dashboard
+        loadDashboard();
+        // Go back to main
+        switchPhase('phase1a');
       }
 
       // --- DOM BUILDER ---
@@ -1262,7 +1446,7 @@
         if (index < dynamicStepsData.length - 1) {
           navHTML += `<button class="btn btn-nav btn-nav-primary" onclick="showStep(${index + 1})">Next →</button>`;
         } else {
-          navHTML += `<button class="btn btn-nav" style="color: var(--primary-green); border-color: var(--primary-green);">Mission Complete <i class="fas fa-check ms-2"></i></button>`;
+          navHTML += `<button class="btn btn-nav" style="color: var(--primary-green); border-color: var(--primary-green);" onclick="finishSession()">Mission Complete <i class="fas fa-check ms-2"></i></button>`;
         }
         navHTML += `</div>`;
 
