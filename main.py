@@ -51,6 +51,20 @@ except Exception:
     except Exception:
         collection_byom = None
 
+
+class SessionStart(BaseModel):
+    user_id: str
+    subject: str
+    topic: str
+
+class ChatEntry(BaseModel):
+    user_id: str
+    session_id: str
+    subject: str
+    chapter: str
+    user_query: str
+    ai_response: str
+
 class LevelAnswers(BaseModel):
     answers: list[int]
 
@@ -239,6 +253,74 @@ async def calculate_level(data: LevelAnswers):
     elif avg <= 2.6:
         return {"level": "Intermediate", "average_score": avg}
     return {"level": "Beginner", "average_score": avg}
+
+
+@app.post("/session/start")
+async def start_session(data: SessionStart):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+
+    new_session = {
+        "user_id": data.user_id,
+        "subject": data.subject,
+        "topic": data.topic,
+        "quiz_score": 0,
+        "time_spent_seconds": 0
+    }
+
+    res = supabase.table("learning_sessions").insert(new_session).execute()
+    if not res.data:
+        raise HTTPException(status_code=500, detail="Failed to create session")
+
+    return {"session_id": res.data[0]["id"]}
+
+@app.post("/chat")
+async def save_chat(data: ChatEntry):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+
+    new_chat = {
+        "user_id": data.user_id,
+        "session_id": data.session_id,
+        "subject": data.subject,
+        "chapter": data.chapter,
+        "user_query": data.user_query,
+        "ai_response": data.ai_response,
+        "is_helpful": True # Default
+    }
+
+    res = supabase.table("chat_history").insert(new_chat).execute()
+    if not res.data:
+        raise HTTPException(status_code=500, detail="Failed to save chat")
+
+    return {"success": True, "chat_id": res.data[0]["id"]}
+
+@app.get("/dashboard/{user_id}")
+async def get_dashboard(user_id: str):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+
+    sessions_res = supabase.table("learning_sessions").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
+    sessions = sessions_res.data
+
+    if not sessions:
+        return {"sessions": []}
+
+    chats_res = supabase.table("chat_history").select("*").eq("user_id", user_id).order("timestamp", desc=False).execute()
+    chats = chats_res.data
+
+    # Group chats by session_id
+    chats_by_session = {}
+    for chat in chats:
+        s_id = str(chat["session_id"])
+        if s_id not in chats_by_session:
+            chats_by_session[s_id] = []
+        chats_by_session[s_id].append(chat)
+
+    for session in sessions:
+        session["chats"] = chats_by_session.get(str(session["id"]), [])
+
+    return {"sessions": sessions}
 
 # --- RESTORED SESSION STATS ---
 @app.get("/session-stats")
