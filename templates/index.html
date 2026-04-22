@@ -517,11 +517,29 @@
       </div>
     </div>
 
+    <!-- Logout Confirmation Modal (ADHD-friendly) -->
+    <div id="logout-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+      <div style="background: white; padding: 40px; border-radius: 20px; box-shadow: var(--card-shadow); text-align: center; max-width: 400px; width: 90%;">
+        <h3 style="color: var(--primary-blue); font-weight: 700; margin-bottom: 15px;">Leaving already?</h3>
+        <p style="color: var(--text-soft); font-size: 1.1rem; margin-bottom: 30px;">Are you sure you want to log out of your session?</p>
+        <div style="display: flex; gap: 15px; justify-content: center;">
+          <button class="btn" style="background: #e2e8f0; color: var(--text-dark); font-weight: 600; padding: 12px 25px; border-radius: 12px; border: none; flex: 1;" onclick="closeLogoutModal()">Stay</button>
+          <button class="btn" style="background: #E53E3E; color: white; font-weight: 600; padding: 12px 25px; border-radius: 12px; border: none; flex: 1;" onclick="confirmLogout()">Log Out</button>
+        </div>
+      </div>
+    </div>
 
       <!-- Navbar/Header with Sidebar Toggle -->
       <div style="position: absolute; top: 20px; left: 140px; z-index: 1000;">
         <button class="btn btn-outline-secondary" type="button" id="dashboardToggleBtn" data-bs-toggle="offcanvas" data-bs-target="#dashboardSidebar" onclick="clearBadgeIndicator()" aria-controls="dashboardSidebar" style="border-color: var(--primary-blue); color: var(--primary-blue); border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; background: white; box-shadow: var(--card-shadow);">
           <i class="fas fa-bars"></i>
+        </button>
+      </div>
+
+      <!-- Logout Button Top Right -->
+      <div style="position: absolute; top: 20px; right: 28px; z-index: 1000;">
+        <button class="btn btn-outline-danger" type="button" onclick="promptLogout()" style="border-radius: 20px; padding: 8px 20px; font-weight: 700; background: white; box-shadow: var(--card-shadow);">
+          <i class="fas fa-sign-out-alt me-2"></i>Logout
         </button>
       </div>
 
@@ -886,6 +904,23 @@
         }
       }
 
+      function promptLogout() {
+        document.getElementById('logout-modal').style.display = 'flex';
+      }
+
+      function closeLogoutModal() {
+        document.getElementById('logout-modal').style.display = 'none';
+      }
+
+      function confirmLogout() {
+        localStorage.removeItem('prism_user_id');
+        localStorage.removeItem('prism_user_email');
+        localStorage.removeItem('prism_science_level');
+        localStorage.removeItem('prism_social_science_level');
+        localStorage.removeItem('prism_current_session_id');
+        window.location.href = '/';
+      }
+
       function switchPhase(phaseId) {
         if (window.speechSynthesis) window.speechSynthesis.cancel();
         if (typeof stopAudio === "function") stopAudio();
@@ -915,7 +950,7 @@
         loadBadges();
         localStorage.removeItem('prism_current_session_id');
         if (!userId) {
-            window.location.href = '/login';
+            window.location.href = '/';
             return;
         }
 
