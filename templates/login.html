@@ -366,7 +366,7 @@
                 <div class="field mb-4">
                     <div class="d-flex justify-content-between align-items-end mb-1">
                         <label for="login-pw" class="mb-0">Password</label>
-                        <a href="#" class="forgot-link-text" onclick="showToast('A reset link is on its way!', 'success'); return false;">Forgot?</a>
+                        <a href="#" class="forgot-link-text" onclick="promptForgotPassword(); return false;">Forgot?</a>
                     </div>
                     <div class="field-inner">
                         <input type="password" id="login-pw" placeholder="Enter your password" autocomplete="current-password" oninput="clearError('login-pw-msg')">
@@ -421,11 +421,128 @@
         </div>
     </div>
 
+    <!-- Forgot Password Modal -->
+    <div id="forgot-pw-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+      <div style="background: white; padding: 40px; border-radius: 20px; box-shadow: var(--card-shadow); max-width: 400px; width: 90%;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h3 style="color: var(--primary-blue); font-weight: 700; margin: 0;">Reset Password</h3>
+          <button style="background: none; border: none; font-size: 1.5rem; color: var(--text-soft); cursor: pointer;" onclick="closeForgotModal()">&times;</button>
+        </div>
+
+        <div id="forgot-step-1">
+          <p style="color: var(--text-soft); font-size: 0.95rem; margin-bottom: 20px;">Enter your email and we'll simulate sending an OTP.</p>
+          <div class="field mb-3">
+            <div class="field-inner">
+                <input type="email" id="forgot-email" placeholder="Your account email">
+                <i class="fas fa-envelope field-icon"></i>
+            </div>
+          </div>
+          <button class="prism-btn" onclick="sendOTP()">Send OTP</button>
+        </div>
+
+        <div id="forgot-step-2" style="display: none;">
+          <p style="color: var(--text-soft); font-size: 0.95rem; margin-bottom: 20px;">Enter the 4-digit OTP you received.</p>
+          <div class="field mb-3">
+            <div class="field-inner">
+                <input type="text" id="forgot-otp" placeholder="Enter OTP (e.g., 1234)" maxlength="4">
+                <i class="fas fa-key field-icon"></i>
+            </div>
+          </div>
+          <div class="field mb-3">
+            <div class="field-inner">
+                <input type="password" id="forgot-new-pw" placeholder="New Password">
+                <i class="fas fa-lock field-icon"></i>
+            </div>
+          </div>
+          <button class="prism-btn" onclick="verifyOTPAndReset()">Reset Password</button>
+        </div>
+      </div>
+    </div>
+
     <div class="toast-notification" id="toast" role="alert" aria-live="polite"></div>
 
     <script>
         const API_URL = "";
         let globalEmail = "";
+        let simulatedOTP = "";
+
+        function promptForgotPassword() {
+            document.getElementById('forgot-pw-modal').style.display = 'flex';
+            document.getElementById('forgot-step-1').style.display = 'block';
+            document.getElementById('forgot-step-2').style.display = 'none';
+            document.getElementById('forgot-email').value = globalEmail || '';
+            document.getElementById('forgot-otp').value = '';
+            document.getElementById('forgot-new-pw').value = '';
+        }
+
+        function closeForgotModal() {
+            document.getElementById('forgot-pw-modal').style.display = 'none';
+        }
+
+        async function sendOTP() {
+            const email = document.getElementById('forgot-email').value.trim();
+            if(!validateEmail(email).ok) {
+                showToast("Please enter a valid email", "error");
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/auth/generate-otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                });
+
+                if (!res.ok) {
+                    const error = await res.json();
+                    throw new Error(error.detail || "Failed to generate OTP");
+                }
+
+                const data = await res.json();
+
+                // For simulation purposes, we alert the OTP
+                alert(`[Simulation] Your PRISM OTP is: ${data.otp}`);
+
+                document.getElementById('forgot-step-1').style.display = 'none';
+                document.getElementById('forgot-step-2').style.display = 'block';
+            } catch (err) {
+                showToast(err.message, "error");
+            }
+        }
+
+        async function verifyOTPAndReset() {
+            const otpInput = document.getElementById('forgot-otp').value.trim();
+            const newPw = document.getElementById('forgot-new-pw').value;
+            const email = document.getElementById('forgot-email').value.trim();
+
+            if (!otpInput) {
+                showToast("Please enter the OTP.", "error");
+                return;
+            }
+
+            if (newPw.length < 6) {
+                showToast("Password must be at least 6 characters.", "error");
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/auth/reset-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, new_password: newPw, otp: otpInput })
+                });
+
+                if (!res.ok) {
+                    const error = await res.json();
+                    throw new Error(error.detail || "Reset failed");
+                }
+
+                showToast("Password reset successful! You can now log in.", "success");
+                closeForgotModal();
+            } catch (err) {
+                showToast(err.message, "error");
+            }
+        }
 
         function showStep(stepId) {
             document.querySelectorAll('.flow-step').forEach(el => el.classList.remove('active'));
@@ -584,7 +701,7 @@
 
                 btn.disabled = false; btn.textContent = 'Sign In →';
                 showToast('Synced! Redirecting...', 'success');
-                setTimeout(() => window.location.href = '/', 800);
+                setTimeout(() => window.location.href = '/home', 800);
             } catch (err) {
                 btn.disabled = false; btn.textContent = 'Sign In →';
                 document.getElementById('login-pw-msg').textContent = err.message;
@@ -629,7 +746,7 @@
 
                 btn.disabled = false; btn.textContent = 'Start Learning →';
                 showToast(`Welcome to PRISM, ${name}!`, 'success');
-                setTimeout(() => window.location.href = '/', 800);
+                setTimeout(() => window.location.href = '/home', 800);
             } catch (err) {
                 btn.disabled = false; btn.textContent = 'Start Learning →';
                 document.getElementById('su-pw-msg').textContent = err.message;

@@ -93,7 +93,18 @@ class AuthUpdateLevel(BaseModel):
     subject: str
     level: str
 
+class AuthResetPassword(BaseModel):
+    email: str
+    new_password: str
+    otp: str
+
+class AuthGenerateOTP(BaseModel):
+    email: str
+
 # --- AUTHENTICATION ENDPOINTS ---
+
+# In-memory store for simulated OTPs
+otp_store = {}
 
 @app.post("/auth/check-email")
 async def check_email(data: AuthEmailCheck):
@@ -174,6 +185,36 @@ async def update_level(data: AuthUpdateLevel):
         raise HTTPException(status_code=404, detail="User not found or update failed")
 
     return {"success": True, column_name: res.data[0][column_name]}
+
+import random
+
+@app.post("/auth/generate-otp")
+async def generate_otp(data: AuthGenerateOTP):
+    otp = str(random.randint(1000, 9999))
+    otp_store[data.email] = otp
+    # In a real app we'd email this, but for simulation we return it to the frontend
+    return {"success": True, "otp": otp}
+
+@app.post("/auth/reset-password")
+async def reset_password(data: AuthResetPassword):
+    expected_otp = otp_store.get(data.email)
+    if not expected_otp or expected_otp != data.otp:
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+
+    # Clear the OTP after successful validation but before potential DB failure
+    del otp_store[data.email]
+
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(data.new_password.encode('utf-8'), salt).decode('utf-8')
+
+    res = supabase.table("users").update({"password_hash": hashed}).eq("email", data.email).execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="User not found or update failed")
+
+    return {"success": True}
 
 # --- SUPABASE DYNAMIC ENDPOINTS (WITH SAFE FALLBACKS) ---
 
@@ -455,9 +496,9 @@ STATIC_DIR = "static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 @app.get("/")
-async def read_index():
-    return FileResponse(os.path.join("templates", "index.html"))
-
-@app.get("/login")
 async def read_login():
     return FileResponse(os.path.join("templates", "login.html"))
+
+@app.get("/home")
+async def read_index():
+    return FileResponse(os.path.join("templates", "index.html"))
