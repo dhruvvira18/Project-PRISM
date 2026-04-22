@@ -488,6 +488,8 @@
         margin: 5px 0;
       }
 
+      .logout:hover{background-color: white; color:red;}
+
       @keyframes float-up {
         0% {
           opacity: 1;
@@ -538,7 +540,7 @@
 
       <!-- Logout Button Top Right -->
       <div style="position: absolute; top: 20px; right: 28px; z-index: 1000;">
-        <button class="btn btn-outline-danger" type="button" onclick="promptLogout()" style="border-radius: 20px; padding: 8px 20px; font-weight: 700; background: white; box-shadow: var(--card-shadow);">
+        <button class="btn btn-outline-danger logout" type="button" onclick="promptLogout()" style="border-radius: 20px; padding: 8px 20px; font-weight: 700; background: white; box-shadow: var(--card-shadow);">
           <i class="fas fa-sign-out-alt me-2"></i>Logout
         </button>
       </div>
